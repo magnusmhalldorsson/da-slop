@@ -6,7 +6,7 @@ These are primarily results that are ***believed to be correct*** but ***have no
 
 ## Start here
 
-Jump to ***[INDEX.md](INDEX.md)*** for the master index of all results here.
+Jump to the **[master index](INDEX.md)** for the list of all results.
 
 ## Goals
 

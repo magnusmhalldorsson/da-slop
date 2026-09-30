@@ -2,7 +2,6 @@
 
 See [README.md](README.md) for explanations and background.
 
-| Problem | Communicated by | Assigned to |
-| -- | -- | -- |
-| [Edge coloring](edge-coloring/README.md) | Jukka Suomela (HF) | Yannic Maus |
-
+| Problem | Communicated by | Confidence | Assigned to |
+| -- | -- | -- | -- |
+| [Edge coloring](edge-coloring/README.md) | Jukka Suomela | HF | Yannic Maus |

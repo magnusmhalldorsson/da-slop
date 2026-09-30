@@ -1,0 +1,2023 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=28mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,array,longtable,tabularx}
+\usepackage{placeins}
+\usepackage{enumitem}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=MidnightBlue,citecolor=MidnightBlue,urlcolor=MidnightBlue,
+ pdftitle={Fast distributed edge coloring by local palette selection},pdfauthor={}}
+\usepackage[nameinlink,noabbrev]{cleveref}
+\setlist{itemsep=2pt,topsep=5pt}
+\setlength{\emergencystretch}{2em}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newcommand{\N}{\mathbb N}
+\newcommand{\F}{\mathcal F}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\poly}{\operatorname{poly}}
+\newcommand{\ceil}[1]{\left\lceil #1\right\rceil}
+\newcommand{\floor}[1]{\left\lfloor #1\right\rfloor}
+\newcommand{\abs}[1]{\left|#1\right|}
+\newcommand{\set}[1]{\left\{#1\right\}}
+\newcommand{\logstar}{\log^*}
+\newcommand{\LOCAL}{\ensuremath{\mathsf{LOCAL}}}
+\newcommand{\CONGEST}{\ensuremath{\mathsf{CONGEST}}}
+\DeclareMathOperator{\degmax}{\Delta}
+\title{Fast distributed edge coloring\\by local palette selection}
+\author{}
+\date{30 September 2026}
+
+\begin{document}
+\maketitle
+\begin{center}
+\fbox{\begin{minipage}{0.91\linewidth}
+\textbf{Highlight.} A graph of maximum degree at most a known bound
+\(\Delta\), supplied with a proper vertex $2$-coloring, admits a
+\emph{deterministic proper edge coloring with $O(\Delta)$ colors in
+$O(1+\logstar\Delta)$ communication rounds}. No vertex identifiers are
+needed, and the bound is independent of the number of vertices.
+\end{minipage}}
+\end{center}
+
+\begin{abstract}
+We prove the highlight theorem by an elementary construction of expanding
+sets and two applications of Hall's marriage theorem. Each old edge color
+specifies a short list of new colors. One side of the bipartition proposes
+disjoint sublists, and the other side accepts distinct representatives.
+This reduces a palette of $L\Delta$ colors to $O(\Delta\log L)$ colors.
+We also prove a sharper $O(\Delta\log L/\log\log L)$ reduction, an explicit
+$\lfloor16.5\Delta\rfloor$ final palette, and a direct two-round
+$O(\Delta^{5/3})$ algorithm. For arbitrary edge lists, a related construction
+colors lists of size $O(\Delta\log\Delta/\log\log\Delta)$ in three rounds;
+batching and partial coloring give linear-list and degree-plus-one-list
+tradeoffs. We give general-graph consequences, a tight one-round lower
+bound under explicit initialization conventions, and limitations of two
+particular set-system constructions. All new constructions and reductions
+are proved, including their numerical estimates. The probabilistic method
+is used to construct deterministic finite tables, and no efficiency of
+their local construction is assumed.
+\end{abstract}
+
+\clearpage
+{\small\tableofcontents}
+\clearpage
+
+\section{Results, model, and perspective}\label{sec:overview}
+
+The input to the central result is a bipartite graph \emph{with its two
+sides supplied}. We call the sides black and white. This information is
+stronger than a promise of bipartiteness. The result applies to irregular
+graphs as well as regular graphs; a common upper bound $\Delta$ on their
+degrees is assumed known. The empty graph is immediate, so throughout the
+proofs we may assume $\Delta\ge1$.
+
+\subsection{Communication and colors}
+In the synchronous \LOCAL\ model, each vertex can send an arbitrary finite
+message along each incident edge in each round and perform arbitrary finite
+local computation between rounds. Each vertex initially knows its degree,
+its own distinct ports $0,\ldots,\deg(v)-1$, and its side of the supplied
+bipartition. Opposite-end ports are initially unknown. On general graphs
+we use distinct identifiers from a universe of polynomial size in $n$,
+the number of vertices. For these general-graph upper bounds, $n$ (or a polynomial estimate of it and of the identifier range) may be supplied. The anonymous \LOCAL\ bounds permit any common upper bound $\Delta$. For general-graph and bandwidth statements we assume $1\le\Delta\le n-1$ on a nonempty simple graph; this holds when $\Delta$ is the actual maximum degree. In the general-graph setting a larger supplied bound may be clamped using the supplied $n$. Unless an intermediate one-sided state is explicitly
+specified, \emph{both endpoints output the same final color of their edge}.
+These conventions are especially relevant to exact one- and two-round bounds.
+
+An edge coloring is proper if incident edges receive different colors.
+In list edge coloring, each edge $e$ has a finite set $L_e$ of permissible
+colors, initially known at both endpoints. Labels have finite encodings
+and a common total order; their lengths and their global universe are
+unrestricted. All list results and the ordinary corollaries derived from them are in \LOCAL. The ordinary palette-reduction algorithms and the direct two-round construction also fit
+\CONGEST, where each edge carries $O(\log n)$ bits per round, under the
+same unrestricted-local-computation convention; see
+\cref{sec:implementation}. Graphs are finite and simple unless otherwise
+stated. For a simple graph $G$, write
+\[
+ d_G(e)=\deg_G(u)+\deg_G(v)-2\qquad(e=uv)
+\]
+for the degree of $e$ in the line graph. Thus a degree-plus-one edge list
+has size at least $d_G(e)+1$. We use ``degree-plus-one'' in this line-graph
+sense, not to mean $\Delta+1$.
+
+All tables below are uniform sufficient guarantees, not optimality claims.
+Logarithms in asymptotic expressions are cut off at an absolute constant.
+For exact parameter choices, put
+\begin{equation}\label{eq:rho}
+ h=1+\logstar\Delta,\qquad \ell=1+\logstar n,\qquad
+ \rho=\min\{r\in\N:r\ge3,\ r^{r-2}\ge720\Delta^4\}.
+\end{equation}
+Here $\logstar$ uses base two, and
+$\rho=\Theta(\log\Delta/\log\log\Delta)$ as $\Delta\to\infty$.
+Taking logarithms of its defining inequality proves this last assertion:
+$(r-2)\ln r$ must be $\Theta(\ln\Delta)$, and constant multiples of
+$\ln\Delta/\ln\ln\Delta$ bracket the least feasible $r$ for large $\Delta$.
+
+\subsection{Palette size versus time}
+\begin{table}[htbp]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}lXl@{}}
+\toprule
+Task with a supplied bipartition & Sufficient palette or list size & Rounds\\
+\midrule
+Ordinary & $\Delta^2$ & $1$\\
+Ordinary & $<3\Delta^{5/3}$ & $2$\\
+Ordinary & $O\!\left(\Delta\frac{\log^{(t)}\Delta}{\log^{(t+1)}\Delta}\right)$,
+ any fixed $t\ge1$ & $t+2$\\
+Ordinary & $\lfloor16.5\Delta\rfloor$ & $O(h)$\\
+Lists & $\Delta^2$ & $2$\\
+Lists & $\rho\bigl(d_G(e)+1\bigr)$ on edge $e$ & $3$\\
+Lists & $2\Delta-2+\rho(2k-1)$, $1\le k\le\Delta$ & $O(h+\Delta/k)$\\
+Lists & $\ceil{(2+\eps)\Delta}$, $\eps>0$ & $O(h+1+\rho/\eps)$\\
+Lists & $d_G(e)+1$ on edge $e$ & $O(\rho(1+\log\Delta))$\\
+\bottomrule
+\end{tabularx}
+\caption{Deterministic bounds with a supplied bipartition. Iterated logarithms
+are denoted by $\log^{(t)}$. The $t+2$ bound pipelines reductions by alternating
+the active side, with a final notification to both endpoints.}
+\label{tab:bipartite}
+\end{table}
+
+In particular, $100\Delta$-element lists take $O(\rho)$ rounds, whereas
+ordinary $O(\Delta)$ coloring takes $O(h)$ rounds. Choosing
+$k=\ceil{\Delta/h}$ in the batching bound gives lists of size
+$O(\Delta\rho/h)$ in $O(h)$ rounds. Choosing
+$k=\ceil{\Delta/(1+\log\Delta)}$ gives
+\begin{equation}\label{eq:neartwo}
+ 2\Delta+O\!\left(\frac{\Delta}{\log\log\Delta}\right)
+ \quad\text{colors or list entries in }O(1+\log\Delta)\text{ rounds}.
+\end{equation}
+Exact $2\Delta-1$ colors follow by assigning every edge the same list of
+that size. Its time is $O(\rho(1+\log\Delta))$.
+
+\begin{table}[htbp]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}lXl@{}}
+\toprule
+Task on a general graph & Sufficient size & Total rounds\\
+\midrule
+Ordinary & $3\lfloor16.5\Delta\rfloor\le50\Delta$ & $O(\ell)$\\
+Lists & $O_c(\Delta^2\log\Delta/2^{c h})$, any fixed $c>0$ & $O_c(\ell)$\\
+Lists & $100\Delta$ & $O(1+\log\Delta+\ell)$\\
+Ordinary or lists & $2\Delta+O(\Delta/\log\log\Delta)$ & $O(1+\log\Delta+\ell)$\\
+Lists & $d_G(e)+1$ on edge $e$ & $O(\rho(1+\log\Delta)+\ell)$\\
+\bottomrule
+\end{tabularx}
+\caption{General-graph consequences in the identifier-based \LOCAL\ model.
+The additive dependence on $n$ is included.}
+\label{tab:general}
+\end{table}
+
+The constants in the fixed-$t$ and fixed-$c$ families may depend on those
+parameters. Consequently these families have no single smallest member
+if only an unspecified constant round budget is given. The asymptotic
+expressions have the usual bounded-degree interpretation. Every sufficient
+nonintegral list size is rounded up.
+
+\FloatBarrier
+\subsection{Prior ingredients and the main questions}
+The elementary proof in \cref{sec:hall} uses Hall's theorem~\cite{Hall} and
+the probabilistic construction of expanding neighborhoods. This is the
+standard lossless-expander counting method; a general existence theorem
+appears in Berinde et al.~\cite[Proposition 6]{BGIKS}. We give the full
+specialized proof with explicit constants. The sharper ordinary reductions
+use Haxell's hypergraph matching condition~\cite{Haxell}; its exact
+bipartite formulation also appears in Annamalai~\cite[Theorem 1.1]{Annamalai}.
+We include a proof of the needed form.
+
+The proposal-and-acceptance structure is related to the two-round
+color-reduction and list-coloring framework of Maus and
+Tonoyan~\cite{MT}. The list slack-reduction strategy comes from
+Balliu, Kuhn, and Olivetti~\cite[Lemma 4.2]{BKO}, also used in
+Balliu, Brandt, Kuhn, and Olivetti~\cite[Appendix D]{BBKO}. We prove the
+version needed here and use virtual vertex splitting to obtain only
+$O(\rho)$ sequential classes. General-graph reductions use standard
+vertex-color reduction~\cite{Linial}, defective coloring~\cite{Kuhn,BEK},
+and, for the second row of \cref{tab:general}, the conflict-coloring
+theorem of Fraigniaud, Heinrich, and Kosowski~\cite{FHK}.
+
+For comparison, \cite[Lemma 6.1]{BBKO} gives $(2+\eps)\Delta$ colors in
+$O(\eps^{-6}\log^{11}\Delta)$ deterministic \CONGEST\ rounds when the
+bipartition is supplied. At most $2\Delta-2$ colors have a quite different
+behavior: Chang, He, Li, Pettie, and Uitto~\cite[Theorem 2]{CHLPU} prove
+$n$-dependent lower bounds even with a supplied bipartition. That theorem
+does not give a lower bound for a larger constant times $\Delta$.
+We do not establish whether ordinary $O(\Delta)$ coloring is possible in
+constant time, or whether arbitrary $100\Delta$-element lists can be
+colored in $O(h)$ rounds. The restrictions proved in \cref{sec:barriers}
+concern specified constructions and do not settle these questions.
+
+\section{The elementary proof: expansion and Hall twice}\label{sec:hall}
+
+\begin{lemma}[Hall's theorem~\cite{Hall}]\label{lem:hall}
+Finite sets $A_i$, indexed by $i\in I$, admit distinct representatives
+$a_i\in A_i$ if and only if
+$\abs{\bigcup_{i\in J}A_i}\ge\abs J$ for every $J\subseteq I$.
+\end{lemma}
+\begin{proof}
+Necessity is immediate. For sufficiency, induct on $\abs I$.
+If a nonempty proper $J\subset I$ has equality, match its sets by
+induction and delete their union from the other sets. For any collection
+$K\subseteq I\setminus J$, Hall's inequality for $K\cup J$ implies that
+at least $\abs K$ colors remain, so induction matches those sets too.
+If there is no such tight $J$, choose an element of one set, delete that
+set and element, and use induction: every nonempty collection of the
+remaining sets originally had at least one unit of slack. The cases
+$\abs I\le1$ are immediate.
+\end{proof}
+
+\begin{lemma}[Expanding neighborhoods]\label{lem:expander}
+For integers $\Delta\ge1$ and $r\ge2$, there are sets
+$N_i\subseteq[48r\Delta]$, $i\in[2^r\Delta]$, with
+\[
+ \abs{N_i}=2r+1,\qquad
+ \abs{\bigcup_{i\in I}N_i}\ge(r+1)\abs I
+ \quad\text{whenever }\abs I\le\Delta.
+\]
+Here $[a]=\{1,\ldots,a\}$.
+\end{lemma}
+\begin{proof}
+Choose the $N_i$ independently and uniformly among $(2r+1)$-subsets
+of $[Q]$, where $Q=48r\Delta$. A fixed $D$-subset chosen uniformly from
+$[Q]$ lies in a fixed $t$-set with probability
+\[
+ \frac{\binom tD}{\binom QD}
+ =\prod_{j=0}^{D-1}\frac{t-j}{Q-j}\le(t/Q)^D
+\]
+when $t\ge D$; it has probability zero otherwise.
+We use $\binom ab\le(ea/b)^b<(3a/b)^b$ for $1\le b\le a$.
+For completeness, the binomial theorem gives
+$\binom ab(b/a)^b\le(1+b/a)^a\le e^b$.
+
+For a fixed $1\le k\le\Delta$, a union of at most $(r+1)k$ colors is
+contained in some set of exactly that size. A union bound gives probability
+at most
+\begin{align*}
+ &\binom{2^r\Delta}{k}\binom{48r\Delta}{(r+1)k}
+ \left(\frac{(r+1)k}{48r\Delta}\right)^{(2r+1)k}\\
+ &\qquad\le
+ \left[9\left(\frac{r+1}{8r}\right)^r
+              \left(\frac{k}{\Delta}\right)^{r-1}\right]^k
+ \le(81/256)^k<(1/3)^k.
+\end{align*}
+The second inequality uses $(r+1)/r\le3/2$ and $r\ge2$.
+Summing over $k$ gives failure probability less than $1/2$.
+The resulting neighborhoods in fact have strictly more than
+$(r+1)\abs I$ neighbors for every nonempty eligible $I$.
+\end{proof}
+
+\begin{lemma}[One palette reduction]\label{lem:expanderreduction}
+An existing proper edge coloring with at most $2^r\Delta$ colors can be
+replaced by one with $48r\Delta$ colors in two rounds, for $r\ge2$.
+\end{lemma}
+\begin{proof}
+Associate the fixed neighborhood $N_i$ of \cref{lem:expander} with old
+color $i$. At a black vertex, choose an $(r+1)$-subset $S_e\subseteq
+N_{c(e)}$ for every incident edge, with the $S_e$ pairwise disjoint.
+Such a choice exists: replace each incident edge by $r+1$ clones whose
+available colors are $N_{c(e)}$. A set of clones supported on $k$ edges
+has size at most $(r+1)k$ and that many available colors by expansion.
+Hall matches all clones, giving the required sets. Distinct old colors
+on a star are essential here.
+
+In the first round, black vertices send their proposals $S_e$ to white
+vertices. Consider any $k$ edges at a white vertex. Their old colors
+are distinct and
+\begin{equation}\label{eq:deletedneighbors}
+ \abs{\bigcup_e S_e}
+ \ge\abs{\bigcup_e N_{c(e)}}-\sum_e\abs{N_{c(e)}\setminus S_e}
+ \ge(r+1)k-rk=k.
+\end{equation}
+Hall therefore supplies distinct representatives for all received
+proposals. The white vertex assigns these representatives to its edges
+and returns them in the second round. They are distinct at white by
+construction and at black because the proposals were disjoint.
+\end{proof}
+
+This proof explains the choice $2r+1$: expansion by $r+1$ allows black
+vertices to allocate $r+1$ colors per edge, and deleting the other $r$
+colors per neighborhood still leaves the one unit of expansion needed
+at white vertices. The algorithm only needs the neighborhoods and
+ordinary bipartite matchings.
+
+\begin{theorem}[Linear palettes in iterated-logarithmic time]\label{thm:linearordinary}
+A supplied-bipartite graph of maximum degree at most $\Delta$ has a
+uniform deterministic $512\Delta$-edge-coloring algorithm taking $O(h)$
+rounds. Identifiers are unnecessary.
+\end{theorem}
+\begin{proof}
+Exchange ports once and color an edge by the ordered pair of its black
+and white ports. This is a proper $\Delta^2$-coloring known at both ends.
+While the current palette has size $L\Delta$ with integer $L>512$, put
+$r=\ceil{\log_2 L}$ and apply \cref{lem:expanderreduction}. The new
+overhead is $f(L)=48\ceil{\log_2 L}$. For $r\ge10$,
+$48r<2^{r-1}<L$: the first inequality holds at $r=10$ and persists since
+$(r+1)/r<2$. Thus the integer overhead strictly decreases to at most $512$.
+
+For $x\ge2$, $f(x)\le96\log_2 x$. For all $x$ above an absolute
+threshold, $f(f(x))\le\log_2 x$, since
+$96\log_2(96\log_2 x)\le\log_2 x$ eventually. Each pair of reductions
+therefore removes at least one logarithmic level until that threshold;
+below it there are only an absolute number of decreasing integer steps.
+This is $O(1+\logstar\Delta)$ reductions.
+
+The existence argument is uniform: enumerate all possible arrays
+$(N_i)$ lexicographically and stop at the first satisfying the finite
+expansion tests. Every vertex uses the same parameters and constructs
+the same array. Exhaustive search also finds the local matchings. These
+computations terminate and consume no communication rounds.
+\end{proof}
+
+\subsection{Alternating sides and message sizes}\label{sec:implementation}
+After the proposal round of \cref{lem:expanderreduction}, all current
+colors are known at the white vertices, and the conceptual coloring is
+proper everywhere. One may immediately reverse the roles: white
+vertices choose disjoint proposals for the next reduction, and black
+vertices accept representatives. A passive vertex need not know old
+color indices to compute a matching among the received proposals.
+It only needs the guarantee, supplied by properness of the conceptual
+old coloring, that those indices are distinct.
+
+Consequently $t\ge1$ consecutive reductions take $t$ proposal rounds
+and one final notification. Including the initial port exchange, the
+total is $t+2$. A reduction viewed in isolation with agreed input and
+output colors still takes two rounds. This also explains the one-round
+description in an active/passive formulation of a bipartite problem.
+
+To implement a proposal in \CONGEST, index the possible proposals inside
+each old-color neighborhood. Send the old color and this index; the
+recipient reconstructs the proposal using the common table. There are
+$\binom{2r+1}{r+1}\le2^{2r+1}$ proposals, so the index needs $O(r)$ bits.
+Along the reduction sequence $r=O(\log\Delta)$ and every color domain is
+polynomial in $\Delta$. All messages use $O(\log\Delta)$ bits, hence
+$O(\log n)$ for simple graphs with a known bound $\Delta\le n-1$.
+The ordinary constructions also work for loopless bipartite multigraphs with distinct local ports. The relation $\Delta\le n-1$ used for the bandwidth statement is specific to simple graphs. For the sharper reduction of \cref{thm:sharp}, the candidate count satisfies $\log m=O(\log L+r)=O(\log\Delta)$ along the relevant sequences; in \cref{app:constant} it is an absolute constant. The same index encoding therefore applies there as well. This observation addresses bandwidth only; finite-table construction
+and storage may be extremely expensive.
+
+\section{Sharper ordinary palette reductions}\label{sec:sharp}
+
+\begin{definition}\label{def:families}
+For an input domain $[M]$ and output domain $[Q]$, a palette system is
+a nonempty finite family $\F_i$ of nonempty subsets of $[Q]$ for each
+$i\in[M]$. It is \emph{good up to degree $\Delta$} if, for every
+$I\subseteq[M]$ of size at most $\Delta$:
+\begin{enumerate}
+\item there are pairwise disjoint choices $S_i\in\F_i$ for $i\in I$;
+\item every choice $S_i\in\F_i$ for $i\in I$ admits distinct representatives.
+\end{enumerate}
+\end{definition}
+
+\begin{lemma}[Palette protocol]\label{lem:protocol}
+A good palette system converts an $M$-edge coloring to a $Q$-edge
+coloring in two rounds. Its reductions can be pipelined as in
+\cref{sec:implementation}.
+\end{lemma}
+\begin{proof}
+Black vertices choose disjoint palettes using the first property and
+send them. White vertices use the second property to choose distinct
+representatives and return them. This is the proof of
+\cref{lem:expanderreduction}, with its two Hall arguments replaced by
+the two stipulated properties.
+\end{proof}
+
+The following classical matching condition will be used to obtain the
+first property. A full proof is given in \cref{app:haxell}.
+\begin{theorem}[Haxell's condition~\cite{Haxell,Annamalai}]\label{lem:haxell}
+Let $\F_i$, $i\in I$, be nonempty finite families of nonempty sets of
+size at most $r$. If, for every nonempty $J\subseteq I$, every set
+meeting every palette in all families indexed by $J$ has size greater
+than $(2r-1)(\abs J-1)$, then pairwise disjoint choices
+$S_i\in\F_i$ exist.
+\end{theorem}
+
+\begin{lemma}[Robust Hall estimate]\label{lem:hallbound}
+Independently sample $m$ uniform $r$-subsets of $[R\Delta]$ for each of
+$L\Delta$ families, where $r\ge2$, $R\Delta\ge r$, and the domain sizes are integers.
+If $a=9Lm/R^{r-1}<1$, the probability that the second property of
+\cref{def:families} fails is at most $a^2/(1-a)$.
+The same bound holds for ranges of independent uniform $r$-tuples.
+\end{lemma}
+\begin{proof}
+A Hall violation gives $s+1$ different families and one palette from
+each, all contained in an $s$-set, for $1\le s<\Delta$. To see this,
+take a violating collection, let $s$ be its union size, and retain
+$s+1$ of the indices. Nonempty palettes exclude $s=0$.
+For a fixed $s$ the union bound is
+\begin{align*}
+ A_s&\le\binom{R\Delta}s\binom{L\Delta}{s+1}
+          [m(s/(R\Delta))^r]^{s+1}\\
+ &\le\left[9(L/R)m\left(s/(R\Delta)\right)^{r-2}\right]^{s+1}
+ \le a^{s+1}.
+\end{align*}
+In the second line, bound both binomial coefficients by $(3N/k)^k$,
+increase the exponent $s$ of $3R\Delta/s$ to $s+1$, and use
+$s+1\ge s$. The containment bound applies both to exact subsets and to
+tuple ranges. Summing the geometric series proves the claim.
+\end{proof}
+
+\begin{theorem}[Sharper reduction]\label{thm:sharp}
+For integers $L\ge6$ and $\Delta\ge1$, let $r\ge3$ be the least
+integer with $r^r\ge128L^2$. A proper $L\Delta$-edge coloring can be
+reduced in two rounds to $8r\Delta$ colors. In particular, the overhead
+becomes $O(\log L/\log\log L)$.
+\end{theorem}
+\begin{proof}
+Put
+\[
+ R=8r,\qquad q=(3/4)^r,\qquad
+ m=\ceil{12(L+r)/q}.
+\]
+For each old color sample $m$ independent uniform exact $r$-subsets of
+$[R\Delta]$. First exclude covers of all palettes in any $k$ families
+by a set $T$ of size $2r(k-1)$, for $2\le k\le\Delta$.
+Writing $x=k/\Delta$, the probability that one sample meets this fixed
+$T$ is at most
+\[
+ g(x)=1-(1-x/4)^r.
+\]
+Indeed, the exact avoidance probability is
+$\prod_{j=0}^{r-1}(1-2r(k-1)/(R\Delta-j))$, and each fraction is at
+most $2rk/(R\Delta)=x/4$, since $R\Delta\ge kj$.
+
+The logarithmic elasticity $xg'(x)/g(x)$ decreases on $(0,1]$:
+with $y=1-x/4$ it equals
+$r/(1+y^{-1}+\cdots+y^{-(r-1)})$. Therefore, with
+\[
+ \alpha=g'(1)/g(1)=\frac{rq}{3(1-q)},
+ \qquad g(x)\le(1-q)x^\alpha.
+\]
+The last inequality follows by integrating
+$d\ln g(x)/d\ln x\ge\alpha$ from $x$ to $1$.
+Monotonicity of $z\ln(3R\Delta/z)$ on $0<z\le R\Delta$ gives
+\[
+ \binom{R\Delta}{2r(k-1)}
+ \le\left(\frac{3R\Delta}{2rk}\right)^{2rk}.
+\]
+Thus the cover-witness probability for size $k$ is at most
+\[
+ B_k\le[b\,x^{m\alpha-2r-1}]^k\le b^k,
+ \quad b=3L\,12^{2r}(1-q)^m,
+\]
+because $m\alpha\ge4r(L+r)/(1-q)>2r+1$.
+Using $mq\ge12(L+r)$, $e>2$, and $L\le2^L$,
+\[
+ b\le3L\,12^{2r}e^{-12(L+r)}
+ \le3L\,2^{-12L}(9/256)^r<1/4.
+\]
+The sum of the cover probabilities is at most $b^2/(1-b)<1/12$.
+Any cover of size at most $(2r-1)(k-1)$ can be padded to size
+$2r(k-1)$; all these sizes are below $R\Delta$. Singleton families
+have positive hitting number. Hence absence of the witnesses implies
+Haxell's condition for every star.
+
+For robust Hall, \cref{lem:hallbound} applies with
+$a=9Lm/(8r)^{r-1}$. The ceiling gives $m\le13(L+r)/q$, so
+\[
+ a\le\frac{156L(L+r)}{(6r)^{r-1}}.
+\]
+The integer $L$ itself qualifies in the definition of $r$ because
+$L^{L-2}\ge6^4\ge128$; thus $r\le L$.
+Also $6^{r-1}/r\ge12$ for $r\ge3$, by induction. Consequently
+\[
+ a\le\frac{312L^2}{12r^r}\le\frac{13}{64}<\frac14.
+\]
+Both failure sums together are less than $1/6$, proving existence of
+a good system. Canonical finite search and \cref{lem:protocol} give
+the algorithm. Taking logarithms of $r^r\ge128L^2$ proves the claimed
+asymptotic size of the least $r$.
+\end{proof}
+
+\begin{corollary}[Fixed-round hierarchy]\label{cor:hierarchy}
+For every fixed integer $t\ge1$, a supplied-bipartite graph can be edge
+colored using
+\[
+ O\!\left(\Delta\frac{\log^{(t)}\Delta}{\log^{(t+1)}\Delta}\right)
+ \quad\text{colors in }t+2\text{ rounds}.
+\]
+\end{corollary}
+\begin{proof}
+Start with the one-round port-pair coloring and apply \cref{thm:sharp}
+$t$ times, using \cref{sec:implementation}. For fixed $t$ and sufficiently
+large $\Delta$, composition of $O(\log x/\log\log x)$ has the displayed
+bound; this follows inductively from
+$\log(\log x/\log\log x)=\Theta(\log\log x)$ and the corresponding
+next logarithm. Bounded exceptional degrees can retain the original
+port-pair coloring, with a larger constant depending on $t$.
+\end{proof}
+
+\begin{theorem}[An explicit linear coefficient]\label{thm:smallconstant}
+There is a deterministic supplied-bipartite algorithm using
+$\lfloor33\Delta/2\rfloor$ colors in $O(h)$ rounds.
+\end{theorem}
+\begin{proof}
+The complete numerical construction in \cref{app:constant} reduces
+$512\Delta$ colors through the coefficients
+\[
+ 512\longrightarrow100\longrightarrow20\longrightarrow18
+ \longrightarrow17\longrightarrow16.6\longrightarrow16.5
+\]
+in a constant number of reductions for every $\Delta\ge6000$.
+Combine it with \cref{thm:linearordinary}. For $\Delta<6000$, process
+the $512\Delta$ old color classes sequentially. Each is a matching;
+give each edge a color from $[2\Delta-1]$ avoiding previously assigned
+colors. At most $2\Delta-2$ colors are forbidden. A constant number of
+rounds per class suffices, and the number of classes is bounded by an
+absolute constant in this branch. This gives the assertion for all degrees.
+\end{proof}
+
+\section{A direct algorithm for exactly two rounds}\label{sec:tworounds}
+
+The preceding reductions need an initial proper coloring. The following
+algorithm works directly from local ports and uses only grouping and ranks.
+
+\begin{theorem}\label{thm:tworounds}
+For a supplied-bipartite graph of maximum degree at most $\Delta\ge1$,
+there is a deterministic two-round edge-coloring algorithm using
+\[
+ \Delta(2s+b^2)<3\Delta^{5/3}\quad\text{colors},\qquad
+ s=\floor{\Delta^{2/3}},\quad b=\floor{\Delta/(s+1)}.
+\]
+Both endpoints know the output after the second round, and messages have
+$O(\log\Delta)$ bits. The construction also works with parallel edges.
+\end{theorem}
+\begin{proof}
+Exchange ports in round one. For edge $e$, let $p(e)$ be its black port
+and $q(e)$ its white port, and put $z(e)=(p(e)+q(e))\bmod\Delta$.
+At a black vertex, group edges by their opposite port $q$. Call a group
+light if it has at most $s$ edges and heavy otherwise. There are at most
+$b$ heavy groups. Give every light edge a zero-based rank $a_B(e)<s$
+within its group, in increasing order of $p$. Give a heavy edge a
+zero-based rank $b_B(e)$ among \emph{all black-heavy edges with the same
+$z$}, again in port order. This rank is less than $b$: for a fixed $z$
+and opposite port $q$, there is at most one local port $p\in[0,\Delta-1]$.
+Thus each heavy group contributes at most one edge at that $z$.
+White vertices compute the symmetric flags and ranks $a_W,b_W$.
+These computations use only information received in round one; heavy
+ranks do not depend on the other endpoint's classification.
+
+In round two each endpoint sends its light/heavy flag and the applicable
+rank. Both endpoints then use the same priority rule:
+\[
+ c(e)=
+ \begin{cases}
+ (B,q(e),a_B(e)),&\text{if black calls $e$ light},\\
+ (W,p(e),a_W(e)),&\text{otherwise, if white calls $e$ light},\\
+ (H,z(e),b_B(e),b_W(e)),&\text{otherwise}.
+ \end{cases}
+\]
+The tags specify disjoint output palettes. Within tag $B$, the pair
+$(q,a_B)$ distinguishes edges at black, while the local port $q$
+distinguishes them at white. Tag $W$ is symmetric. Within tag $H$,
+different $z$ values differ, and at fixed $z$ the appropriate local
+heavy rank distinguishes incident edges at each endpoint. Restricting
+those ranks to edges heavy at both endpoints preserves distinctness.
+Hence the coloring is proper and both endpoints compute the same result.
+
+The tags use at most $\Delta s$, $\Delta s$, and $\Delta b^2$ colors.
+Since $s\le\Delta^{2/3}$ and $s+1>\Delta^{2/3}$, we have
+$b<\Delta^{1/3}$, proving the strict displayed bound. If $b=0$, the
+heavy tag is unused. Each message contains a port, or a flag and a rank,
+and therefore has $O(\log\Delta)$ bits.
+\end{proof}
+
+\section{Three-round coloring from arbitrary lists}\label{sec:lists}
+
+Ordinary palette reduction does not directly preserve edge lists:
+an allowed list may avoid every predetermined candidate palette.
+We replace disjoint-choice families by families that are rich inside
+every sufficiently large allowed set. We first work in a finite common
+universe, and then remove that assumption by a local encoding.
+
+\begin{lemma}[Rich families with robust representatives]\label{lem:rich}
+Let $r\ge3$, $C\ge1$, and $r^r\ge180C^2$. For every integer $j\ge1$
+with $rj\le C$ there are $j$ families
+$\F_{j,1},\ldots,\F_{j,j}$ of nonempty subsets of $[C]$, each of
+size at most $r$, such that:
+\begin{enumerate}
+\item every $rj$-subset of $[C]$ contains a palette from each family;
+\item every selection of palettes from distinct families admits distinct
+representatives.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+Put $t=rj$ and $m=\ceil{4C(C/t)^r}$. In each family, independently
+sample $m$ independent uniform $r$-tuples in $[C]$ and use their ranges
+as palettes. A fixed $t$-set contains the range of a fixed tuple with
+probability $(t/C)^r$. Thus a union bound for richness failure gives
+\[
+ j\binom Ct(1-(t/C)^r)^m
+ \le C2^C e^{-4C}<C2^{-3C}\le1/8.
+\]
+For robust Hall, a violation is witnessed by $s+1$ different families
+with a palette each inside an $s$-set, for $1\le s<j$. Its probability
+is at most
+\begin{align*}
+ B_s&\le\binom Cs\binom j{s+1}m^{s+1}(s/C)^{r(s+1)}\\
+ &\le\left[\frac{9jm s^{r-2}}{C^{r-1}}\right]^{s+1}
+ \le a^{s+1},\qquad a=\frac{9jm j^{r-2}}{C^{r-1}}.
+\end{align*}
+The binomial calculation is the one in \cref{lem:hallbound}.
+Since $m\le5C(C/(rj))^r$,
+\[
+ a\le\frac{45C^2}{r^rj}\le\frac1{4j}\le\frac14.
+\]
+Summing gives Hall-failure probability at most $1/12$. There are no
+Hall witnesses when $j=1$. The total failure probability is below one,
+so each required $j$-table exists. It is constructed separately for each
+$j$; no union bound over different values of $j$ is needed. The
+properties are finite and decidable, hence canonical exhaustive search
+gives a common deterministic table.
+\end{proof}
+
+\begin{lemma}[Finite-universe list coloring]\label{lem:finiteuniverse}
+Under the assumptions $r\ge3$ and $r^r\ge180C^2$, a supplied-bipartite
+graph whose lists satisfy
+\[
+ L_{uv}\subseteq[C],\qquad
+ \abs{L_{uv}}\ge r(\deg(u)+\deg(v)-1)
+\]
+can be list edge colored in three rounds.
+\end{lemma}
+\begin{proof}
+In round one every white vertex sends its degree $j$ and its one-based port
+index $i\in[j]$ along each incident edge. The appropriate $j$-table
+exists: on every edge at that white vertex, the list-size promise
+implies $rj\le C$.
+
+A black vertex of degree $b$ processes its edges in local port order.
+For an edge going to white degree $j$, remove the colors in all its
+previously chosen palettes. At most $r(b-1)$ colors have been removed,
+leaving at least
+$r(b+j-1)-r(b-1)=rj$ colors. Richness supplies a palette from
+$\F_{j,i}$ contained in the remainder. In round two send that palette
+to white. All palettes chosen at a black vertex are disjoint, even if
+its incident family indices repeat.
+
+At a white vertex the family indices are its distinct ports in one
+fixed $j$-table. Robust Hall gives distinct representatives. Choose
+the lexicographically first such assignment and return the colors in
+round three. They are allowed by the lists and distinct at both sides.
+\end{proof}
+
+\begin{theorem}[Arbitrary labels, three rounds]\label{thm:listprimitive}
+Let $\rho$ be defined by \eqref{eq:rho}. If the lists on a
+supplied-bipartite graph of maximum degree at most $\Delta$ satisfy
+\[
+ \abs{L_{uv}}\ge\rho(\deg(u)+\deg(v)-1),
+\]
+then they can be colored in three deterministic rounds, with no bound
+on the global color universe.
+\end{theorem}
+\begin{proof}
+Set $K=2\rho\Delta$ and $C_0=2\rho\Delta^2$. Truncate each edge list
+canonically to its first $\min\{\abs{L_e},K\}$ colors; both endpoints
+perform the same truncation. Its pointwise promise survives because
+$\rho(\deg(u)+\deg(v)-1)<K$.
+At a white vertex $w$, form the union $U_w$ of its truncated incident
+lists. This union has size at most $C_0$. Encode it injectively in
+$[C_0]$ by its order ranks, writing $\phi_w$ for the encoding.
+The definition of $\rho$ gives
+\[
+ \rho^\rho\ge720\rho^2\Delta^4=180C_0^2.
+\]
+Thus \cref{lem:rich} supplies all necessary tables on $[C_0]$.
+
+In round one $w$ sends the ordered union $U_w$, its degree, and its
+port along each incident edge. A black vertex now knows the encoding
+and inverse for each of its edges. It chooses palettes greedily as in
+\cref{lem:finiteuniverse}, but removes colors using their \emph{actual
+labels}. For the current edge, encode an available $\rho j$-set using
+the appropriate $\phi_w$, choose a palette inside that image by
+richness, and decode it to actual labels. Send the actual palette in
+round two. No unused coordinate is chosen because the palette is
+contained in an image of actual allowed colors.
+
+In round three each white vertex encodes its received palettes using
+its single map $\phi_w$, chooses distinct representatives using its
+table, and sends back their actual labels. Injectivity preserves
+distinctness at white. At black, disjointness was enforced on actual
+labels across all incident edges, including those using different
+encodings. This proves correctness and the exact round count.
+\end{proof}
+
+One shared encoding per white star is crucial. Independent rank
+encodings of individual edge lists would not preserve whether two
+incident actual colors are equal. The size of the messages here is
+unrestricted; this is a \LOCAL\ result.
+
+\section{List slack, batching, and partial coloring}\label{sec:slack}
+
+\subsection{Batching with constant additive slack}
+\begin{proposition}\label{prop:quadraticlists}
+Lists of size at least $\Delta^2$ can be edge colored in two rounds
+on a supplied-bipartite graph.
+\end{proposition}
+\begin{proof}
+Each black vertex chooses disjoint $\Delta$-element sublists for its
+edges greedily. At most $\Delta(\Delta-1)$ colors are excluded before
+any choice, so this is possible. Send them in round one. A white
+vertex receives at most $\Delta$ sets, all of size $\Delta$, so every
+nonempty subcollection has union size at least its cardinality.
+Hall gives distinct representatives; return them in round two.
+\end{proof}
+
+\begin{theorem}[Batching tradeoff]\label{thm:batching}
+For $1\le k\le\Delta$, lists of size
+\begin{equation}\label{eq:batchsize}
+ 2\Delta-2+\rho(2k-1)
+\end{equation}
+suffice in $O(h+\Delta/k)$ rounds on supplied-bipartite graphs.
+More generally, lists of size $\ceil{(2+\eps)\Delta}$ suffice in
+$O(h+1+\rho/\eps)$ rounds for every $\eps>0$.
+\end{theorem}
+\begin{proof}
+Compute a proper $512\Delta$ auxiliary edge coloring using
+\cref{thm:linearordinary}. Group its colors into consecutive batches
+of at most $k$. A batch induces maximum degree at most $k$.
+Process batches sequentially, removing colors used on previously
+colored adjacent edges. An edge has at most $2\Delta-2$ adjacent
+edges in total, so \eqref{eq:batchsize} leaves at least
+$\rho(2k-1)$ colors. Apply \cref{thm:listprimitive} to the batch,
+keeping the ambient parameters $\Delta,\rho$ fixed.
+Its pointwise list requirement is no larger than that remainder.
+Between calls, endpoints exchange the sets of colors already used
+at their vertices, so both endpoints agree on the residual list.
+This takes a constant number of rounds per batch. Properness within
+a batch is supplied by the primitive, and across batches by deleting
+previously used colors. There are $O(\Delta/k)$ batches.
+
+For the second assertion put $x=\eps\Delta/(2\rho)$. If $x\ge1$,
+take $k=\min\{\Delta,\floor x\}$. At least $\eps\Delta+2$
+colors remain on each edge, which is enough since
+$\rho(2k-1)\le2\rho k\le\eps\Delta$.
+When $1\le x<\Delta$, $\floor x\ge x/2$, hence the number of batches
+is $O(1+\rho/\eps)$; the same bound holds when $x\ge\Delta$.
+If $x<1$, process matching classes directly, choosing any remaining
+color. There are $O(\Delta)=O(\rho/\eps)$ classes.
+\end{proof}
+
+The simpler quadratic-list primitive can similarly replace
+$\rho(2k-1)$ in \eqref{eq:batchsize} by $k^2$. Thus, if useful for
+particular finite parameters, $2\Delta-2+\min\{k^2,\rho(2k-1)\}$
+also suffices with the same asymptotic time. Setting $\eps=98$ proves
+the $100\Delta$-list bound in \cref{tab:bipartite}. The choices of $k$
+described after that table give its other consequences.
+
+\subsection{Degree-plus-one lists by halving residual degrees}
+We give a full slack-reduction proof in the style of
+\cite[Lemma 4.2]{BKO}. The improvement in the number of sequential
+classes comes from the ordinary coloring theorem and virtual vertex
+splitting.
+
+\begin{theorem}[Partial coloring and degree-plus-one lists]\label{thm:partial}
+On a supplied-bipartite graph, suppose $\abs{L_e}\ge d_G(e)+1$.
+There is a phase taking $O(\rho)$ rounds which preserves this invariant
+and reduces the maximum residual edge degree by at least a factor of
+two, unless all edges are colored. Consequently all edges can be
+colored in $O(\rho(1+\log\Delta))$ rounds. More generally $t$ phases
+cost $O(\rho t)$ rounds and leave maximum edge degree at most
+$(2\Delta-2)/2^t$.
+\end{theorem}
+\begin{proof}
+Let $H$ be the residual graph at the start of a phase and freeze
+$D_e=d_H(e)$. Set $p=4\rho$. At every vertex, group its incident
+residual edges in local port order into blocks of at most $p$, and
+replace each block by a virtual vertex with the same bipartition side.
+The resulting virtual graph has maximum degree at most $p$ and the
+same edges. One physical vertex simulates its blocks, and each virtual
+edge uses its corresponding physical edge. Thus one virtual round
+costs one physical round.
+
+Apply \cref{thm:linearordinary} with degree bound $p$, obtaining at
+most $512p$ auxiliary edge colors in $O(1+\logstar p)$ rounds. Use
+these colors as classes on the original graph. A class contains at
+most one edge from each block. If $e=uv$ belongs to that class, its
+edge degree within the class is at most
+\begin{align*}
+ \ceil{\deg_H(u)/p}-1+\ceil{\deg_H(v)/p}-1
+ &=\floor{(\deg_H(u)-1)/p}+\floor{(\deg_H(v)-1)/p}\\
+ &\le D_e/p.
+\end{align*}
+
+Process the classes in order. Delete colors already used by colored
+adjacent edges, and declare an edge active if its remaining list has
+more than $D_e/2$ colors. Endpoints synchronize these lists and the
+active status in a constant number of rounds. In the active subgraph,
+the current edge degree $D'_e$ is at most $D_e/(4\rho)$, hence
+$\abs{L_e}>2\rho D'_e$. If $D'_e\ge1$, this implies
+$\abs{L_e}\ge\rho(D'_e+1)$, so \cref{thm:listprimitive} colors the
+active nonisolated edges in three rounds. Isolated active edges may
+have shorter lists; color them directly from any available color.
+They are separate components and can be handled concurrently.
+
+An edge left uncolored was inactive when its class was processed.
+Its list started with at least $D_e+1$ colors and then had at most
+$D_e/2$. Therefore at least $D_e/2+1$ colors had been deleted, which
+requires at least that many adjacent edges to have been colored.
+Its final residual degree is at most $D_e/2-1$.
+At every stage, coloring an adjacent edge removes one adjacency and
+deletes at most one list color, preserving the degree-plus-one
+invariant. In particular, an isolated residual edge is active and
+will be colored. The maximum residual edge degree halves, and after
+$O(1+\log\Delta)$ phases no edge remains.
+
+Each of $512p=O(\rho)$ classes costs constant time, and
+$1+\logstar p=O(\rho)$. The phase time and the partial-coloring claim
+follow. All degree and list information used in a class concerns the
+current subgraph; the ambient parameters $\Delta,\rho$ remain valid.
+\end{proof}
+
+
+\section{General graphs}
+\label{sec:general}
+
+Whenever an algorithm is applied to a subgraph, its incident edges are renumbered locally from zero in their inherited port order; the algorithms use these subgraph ports.
+
+We now consider simple graphs with identifiers, a known maximum-degree
+bound $\Delta$, and arbitrary finite edge lists known at both endpoints.
+Write $h=1+\log^*\Delta$ and $\ell=1+\log^*n$.  The parameter
+$\rho=\rho(\Delta)$ of Theorem~\ref{thm:listprimitive} is kept fixed when
+we pass to subgraphs.  We first explain the ordinary-coloring reduction,
+then give list-preserving reductions.  In particular, multiplying an
+ordinary color by a refinement color does not preserve arbitrary lists.
+
+\subsection{Ordinary coloring by splitting vertices}
+
+\begin{theorem}\label{thm:generalordinary}
+A deterministic LOCAL algorithm properly edge-colors a graph of maximum
+degree at most $\Delta$ with $O(\Delta)$ colors in $O(\ell)$ rounds.
+More precisely, a supplied-bipartite $q(\Delta)$-edge-coloring algorithm
+taking $T(\Delta)$ rounds yields a general-graph algorithm using
+$3q(\Delta)$ colors in $O(T(\Delta)+\ell)$ rounds.
+\end{theorem}
+
+\begin{proof}
+Orient every edge from its smaller-identifier endpoint to its
+larger-identifier endpoint.  Replace each vertex $v$ by a black copy
+$v^+$ and a white copy $v^-$, and replace $u\to v$ by $u^+v^-$.  The
+resulting virtual graph has maximum degree at most $\Delta$.  A physical
+vertex simulates its two copies, so one virtual communication round costs
+one physical round.  Apply the supplied-bipartite algorithm and project
+the resulting colors onto the original edges.
+
+For every projected color, each vertex has at most one incoming and at
+most one outgoing edge of that color.  Its monochromatic components are
+directed paths: a cycle would be directed, contradicting the strictly
+increasing identifiers along directed edges.  A standard deterministic
+constant-degree coloring algorithm properly $3$-edge-colors all these
+paths in parallel in $O(\ell)$ rounds. Explicitly, host the process for
+each path edge at its tail, using its tail identifier as its name. These
+names are distinct within each path. Apply the proper vertex-coloring
+algorithm proved in Appendix~\ref{app:defective} to the line graph of
+each path, whose maximum degree is two, to obtain a constant-size
+proper palette. Process those color classes sequentially and recolor
+into $[3]$, avoiding the at most two previously assigned neighbor
+colors. The simulation has constant cost per line-graph round.  Each edge belongs to one path instance,
+and all instances can be simulated concurrently.  Output the pair
+consisting of the projected color and the path color.  Edges with
+different first coordinates differ, and adjacent edges with the same
+first coordinate differ in the second coordinate.  The first claim now
+follows from Theorem~\ref{thm:linearordinary}, since $h=O(\ell)$.
+\end{proof}
+
+\subsection{Two standard vertex-coloring tools}
+
+The list reductions use the following published distributed
+vertex-coloring tools. We state their needed quantitative forms here and give complete proofs in Appendix~\ref{app:defective}.
+
+\begin{lemma}[Standard color reduction and defective coloring]
+\label{lem:standarddefect}
+There is an absolute constant $A$ with the following properties.
+\begin{enumerate}
+\item A graph of maximum degree $D\ge1$ with a proper $M$-vertex-coloring
+can obtain a proper $A D^2$-vertex-coloring in $O(1+\log^*M)$ rounds.
+In particular, identifiers of polynomial range in $n$ give such a
+coloring in $O(\ell)$ rounds.
+\item For every integer $b$ with $1\le b\le D$, the same input admits
+a vertex-coloring with $O((D/b)^2\log(2D/b))$ colors for which every
+monochromatic subgraph has maximum degree at most $b$, in
+$O(1+\log^*M)$ rounds.  The implied constant in the running time is
+independent of $b$.
+\end{enumerate}
+\end{lemma}
+
+The first part is Linial's color reduction~\cite{Linial}. For the
+second, our proof follows the defective-color-reduction method of
+Kuhn~\cite{Kuhn}; the stronger published palette bound omits the
+logarithmic factor. See also~\cite{BEK}. The slightly weaker palette
+here has no effect on any of our edge-coloring bounds. Starting from a
+proper $O(\Delta^2)$-coloring, both tools take $O(h)$ rounds on every
+subgraph. We retain that original proper coloring throughout.
+
+\begin{lemma}[Binary decomposition]\label{lem:binarydecomposition}
+Suppose vertices have labels in $[m]$, not necessarily forming a proper
+coloring.  The edges with distinct endpoint labels can be partitioned
+into at most $\lceil\log_2m\rceil$ supplied-bipartite subgraphs in one
+round.  Edges whose endpoint labels agree are omitted.
+\end{lemma}
+
+\begin{proof}
+Encode the labels by binary strings of a common length.  Assign an edge
+with different endpoint labels to the first bit position in which its
+labels differ.  At that position the bit supplies the black/white
+bipartition.  Every eligible edge has exactly one such first position.
+Exchanging labels lets both endpoints determine the edge's part.
+\end{proof}
+
+\subsection{Degree-plus-one lists}
+
+\begin{theorem}\label{thm:generaldegreeone}
+If every edge $uv$ has a list of size at least
+$\deg(u)+\deg(v)-1$, then the graph can be list edge-colored in
+\[
+ O\bigl(\rho(1+\log\Delta)+\ell\bigr)
+ =O\left(\frac{\log^2\Delta}{\log\log\Delta}+\ell\right)
+\]
+rounds, with bounded-logarithm conventions for small $\Delta$.
+\end{theorem}
+
+\begin{proof}
+Initially obtain a proper $O(\Delta^2)$-vertex-coloring in $O(\ell)$
+rounds.  At all times delete the colors of already colored adjacent
+edges from every uncolored edge's list.  If $H$ is the current residual
+graph, the invariant
+\[
+ |L_e|\ge \deg_H(u)+\deg_H(v)-1
+\]
+holds: coloring one adjacent edge removes one adjacency and deletes at
+most one available color.
+
+Consider a stage whose residual maximum-degree bound is $D$.  For
+$D\ge2$, Lemma~\ref{lem:standarddefect} gives a vertex-coloring with
+at most $c$ colors and monochromatic degree at most $\lfloor D/2\rfloor$
+in $O(h)$ rounds, where $c$ is an absolute constant.  Process each pair
+of distinct vertex colors in turn.  Its uncolored edges form a graph
+with a supplied bipartition and inherit the degree-plus-one list
+invariant.  Apply $t=\lceil\log_2(16c)\rceil$ phases of the partial
+coloring algorithm from Theorem~\ref{thm:partial}.  This costs $O(\rho)$
+rounds and leaves maximum edge degree at most
+\[
+ \frac{2D-2}{2^t}\le\frac{D}{8c}.
+\]
+In any graph with maximum edge degree $B$, every nonisolated vertex has
+degree at most $B+1$, because any edge incident to it has at least
+$\deg(v)-1$ adjacent edges.  Thus, when $D\ge8c$, each processed
+pair leaves maximum vertex degree at most $D/(4c)$.  Later pair calls
+can only remove further edges.  Every vertex belongs to at most $c-1$
+pairs, so all the remaining bichromatic edges together have maximum
+degree at most $D/4$.  The unprocessed monochromatic edges have maximum
+degree at most $D/2$.  The residual maximum degree is therefore at most
+$3D/4$.
+
+Update the common bound to $D\leftarrow\lfloor3D/4\rfloor$, which is valid since actual degrees are integers, and repeat until this bound is less than $8c$.  There are
+$O(1+\log\Delta)$ stages, each costing $O(h+\rho)=O(\rho)$ rounds.
+For the final graph, reduce the retained proper vertex-coloring to a
+constant-size proper vertex-coloring in $O(h)$ rounds.  This gives a
+constant-size proper auxiliary edge-coloring: orient edges by vertex
+color, and label an edge by its two endpoint colors and its port
+numbers at both endpoints.  Edges sharing an endpoint have
+different labels.  Greedily process its constantly many matching
+classes.  The invariant supplies an available color for every edge.
+All chosen colors belong to the original lists.
+
+This reduction is the list-preserving defective-coloring decomposition
+used by Balliu, Brandt, Kuhn, and Olivetti~\cite[Theorem~D.4]{BBKO},
+with the stronger partial-coloring routine proved here.  The explicit
+$O(h)$ decomposition cost is absorbed by $\rho$.
+\end{proof}
+
+\subsection{Nearly \texorpdfstring{$2\Delta$}{2 Delta} colors in logarithmic time}
+
+\begin{theorem}\label{thm:generalbatching}
+For $1\le k\le\Delta$, lists of size
+\[
+ L(k)=2\Delta-2+\rho(2k-1)
+\]
+suffice in
+\[
+ O\left(\ell+\frac{\Delta}{k}
+       +h\log\frac{2\Delta}{k}+\log(2\Delta)\right)
+\]
+rounds on general graphs.
+Consequently, lists of size
+\[
+ 2\Delta+O\!\left(\frac{\Delta}{\log\log\Delta}\right)
+\]
+suffice in $O(\log(2\Delta)+\ell)$ rounds.  In particular, for every
+fixed $\varepsilon>0$, lists of size $\lceil(2+\varepsilon)\Delta\rceil$
+suffice within this time bound.  The same assertions hold for ordinary
+edge-coloring by using a common list on all edges.
+\end{theorem}
+
+\begin{proof}
+Obtain and retain a proper $M=O(\Delta^2)$-vertex-coloring in
+$O(\ell)$ rounds.  At all times an uncolored edge has at least
+$\rho(2k-1)$ available colors, since at most $2\Delta-2$ adjacent
+edges can ever be colored.
+
+As long as the current maximum-degree bound $D$ exceeds $k$, compute
+the constant-color defective vertex-coloring with monochromatic
+degree at most $\lfloor D/2\rfloor$ given by
+Lemma~\ref{lem:standarddefect}.  Its cost is $O(h)$.
+Process the constantly many pairs of distinct vertex colors
+sequentially.  For a pair, compute a proper $O(D)$ auxiliary
+edge-coloring by Theorem~\ref{thm:linearordinary}, and group these
+auxiliary colors into batches of at most $k$.  Theorem~\ref{thm:listprimitive}
+colors each batch in constant time, since its maximum degree is at
+most $k$.  Endpoints exchange colors used at their vertices between
+successive calls to keep their residual lists identical.  A whole
+stage costs $O(h+D/k)$ rounds and leaves only monochromatic edges,
+hence maximum degree at most $\lfloor D/2\rfloor$.
+
+There are $O(1+\log(\Delta/k))$ such stages, and the sum of their
+degree bounds is $O(\Delta)$.  Their total cost is
+\[
+ O\left(h\log\frac{2\Delta}{k}+\frac{\Delta}{k}\right).
+\]
+Once the residual degree is at most $k$, apply
+Lemma~\ref{lem:binarydecomposition} to the retained proper
+$M$-vertex-coloring.  It partitions \emph{all} residual edges into
+$O(\log(2\Delta))$ supplied-bipartite subgraphs, each of maximum degree
+at most $k$.  Color these sequentially with the three-round primitive.
+This proves the stated general bound without any further degree
+decomposition.
+
+For $\Delta\ge2$, set
+$k=\lceil\Delta/\log_2\Delta\rceil$.  Then $1\le k\le\Delta$,
+$\Delta/k=O(\log\Delta)$, and
+$h\log(2\Delta/k)=O(h\log\log\Delta)=O(\log\Delta)$.
+Moreover,
+\[
+ L(k)=2\Delta-2+
+ \rho\left(2\left\lceil\frac{\Delta}{\log_2\Delta}\right\rceil-1\right)
+ =2\Delta+O\!\left(\frac{\Delta}{\log\log\Delta}\right).
+\]
+The degree-one case is immediate.  For fixed $\varepsilon$, the
+displayed slack is at most $\varepsilon\Delta$ for sufficiently large
+$\Delta$.  The finitely many smaller degree bounds are handled by a
+constant-degree greedy schedule after color reduction; its constant
+may depend on $\varepsilon$.
+\end{proof}
+
+\subsection{Short-time general-graph list tradeoffs}
+
+For completeness we give a family of sufficient list sizes for a total
+$O(\ell)$-round algorithm.  It uses the following consequence of conflict coloring, whose complete proof is included in Appendix~\ref{app:fhk}.
+
+\begin{lemma}[A consequence of local conflict coloring]
+\label{lem:fhkfinish}
+There is an absolute constant $B$ such that a graph of maximum degree
+$D\ge1$, supplied with a proper $s$-vertex-coloring, can be list-colored
+in $O(1)$ rounds if every list has at least
+\[
+ \max\{s,D,B D^2\log(2D)\}
+\]
+colors.  The labels of these colors may be arbitrary finite strings.
+\end{lemma}
+
+This is the list-coloring specialization of the method of
+Fraigniaud, Heinrich, and Kosowski~\cite[Lemma 3.3]{FHK}.
+Appendix~\ref{app:fhk} proves it directly, using two transformations of
+conflict-coloring instances and a finite lookup table. Its local
+relabelings preserve conflicts, so the original labels need no common
+bounded universe. Degree zero is immediate. At degree one, components
+are isolated vertices or single edges, and one exchange of lists and
+proper auxiliary colors permits the smaller-color endpoint to choose
+first and the other to avoid its choice. When applied to a line graph,
+each round has constant simulation cost in the original graph: host
+each edge process at a deterministically selected endpoint, communicate
+through the shared endpoint of adjacent edges, and finally notify both
+endpoints of the output.
+
+\begin{theorem}\label{thm:generalshorttime}
+For every fixed real $a>0$, there is a constant $C_a$ such that lists of
+size at least
+\[
+ \left\lceil C_a\,
+   \frac{\Delta^2\log(2\Delta)}{2^{a(1+\log^*\Delta)}}\right\rceil
+\]
+admit a deterministic list edge-coloring in $O_a(\ell)$ rounds on
+general graphs.  Thus these are a family of sufficient upper bounds,
+with constants depending on $a$.
+\end{theorem}
+
+\begin{proof}
+Initially obtain a proper $O(\Delta^2)$-vertex-coloring and a proper
+$s=O(\Delta)$ auxiliary edge-coloring in $O(\ell)$ rounds, using
+Lemma~\ref{lem:standarddefect} and Theorem~\ref{thm:generalordinary}.
+Put $p=\lceil2^{ah/2}\rceil$.
+For each fixed $a$, all sufficiently large $\Delta$ satisfy
+$p\le\Delta/2$.  Put $b=\lfloor\Delta/p\rfloor$ and compute a
+$b$-defective vertex-coloring with $O((\Delta/b)^2\log(2\Delta/b))=O(p^2\log(2p))$ colors
+in $O(h)$ rounds by Lemma~\ref{lem:standarddefect}.
+
+Apply Lemma~\ref{lem:binarydecomposition} to these defective colors.
+It partitions the bichromatic edges into $O(\log p)=O_a(h)$
+supplied-bipartite subgraphs, each of maximum degree at most $\Delta$.
+Color these sequentially with Theorem~\ref{thm:listprimitive}.
+This is feasible for a sufficiently large $C_a$, since
+\[
+ \frac{\Delta^2\log(2\Delta)}{2^{ah}}
+   =\Delta^{2-o(1)}\gg \rho\Delta+\Delta,
+\]
+and at most $2\Delta-2$ colors can be removed from any list throughout
+the entire process.  The residual graph has maximum degree at most
+$b$, consisting only of monochromatic edges of the defective
+vertex-coloring.
+
+Its line graph has maximum degree at most $2b-2$ and inherits the
+proper $s$-coloring of its vertices from the auxiliary edge-coloring.
+Furthermore,
+\[
+ b^2\log(2b)
+ \le\frac{\Delta^2\log(2\Delta)}{p^2}
+ \le\frac{\Delta^2\log(2\Delta)}{2^{ah}}.
+\]
+For sufficiently large $C_a$, the remaining lists therefore satisfy
+Lemma~\ref{lem:fhkfinish}, including its $s=O(\Delta)$ requirement.
+Finish in constant time using that lemma on the line graph.  Every
+color used is an actual member of the edge's original list.
+
+The extra time beyond initialization is $O_a(h)$, and $h=O(\ell)$.
+All degree bounds excluded by ``sufficiently large'' form a finite set
+depending only on $a$.  Increase $C_a$ so that their lists have at
+least $2\Delta-1$ elements and use a constant-degree greedy schedule
+after the initial symmetry breaking.  This covers every $\Delta\ge1$.
+\end{proof}
+
+\section{Lower bounds and limits of the constructions}\label{sec:barriers}
+
+\subsection{The exact one-round threshold}
+\begin{theorem}\label{thm:oneround}
+Fix $\Delta\ge2$ and a palette size $q$ independent of $n$. Under
+our initialization and two-endpoint output conventions, any deterministic
+one-round algorithm valid on all sufficiently large $\Delta$-regular
+supplied-bipartite graphs requires $q\ge\Delta^2$, even with identifiers
+and knowledge of $n$. The bound also holds for randomized algorithms with
+any fixed positive global success probability on all such graphs, if
+disconnected inputs are allowed. The port-pair algorithm attains $\Delta^2$.
+\end{theorem}
+\begin{proof}[Deterministic case]
+Write $d=\Delta$ and use $H=K_{d,d}$ as a fixed core with a specified
+bipartition. Let $P$ be a pool of $K$ identifiers, where $K$ is a multiple
+of $2d$, $K\ge3d+1$, and $K$ is large enough for the finite Ramsey
+theorem with $q^{d^2}$ edge colors and a homogeneous set of $d+1$
+vertices. There are finitely many core tests: all injective assignments
+of pool identifiers to $H$ and all port numberings, in total
+\[
+ N=(K)_{2d}(d!)^{2d}.
+\]
+Fix the global parameter $n$ before considering these tests. For
+sufficiently large $n$ divisible by $2d$, each test can be padded to
+that $n$ with disjoint regular components. Padding is invisible in one round.
+
+Suppose a deterministic protocol succeeds on every core test. For an
+edge whose black and white endpoint identifiers are $x,y$ and whose
+ports are $p,s$, agreement forces the common output to be a function
+$f_n(x,y,p,s)$ of just these data. To prove this, hold the white
+endpoint's star fixed while varying the identifiers and opposite ports
+at the other neighbors of the black endpoint. These changes cannot affect
+the white endpoint's first-round view: first-round messages depend only
+on the sender's own initial information. For any two choices of the
+black star, choose one white star whose private identifiers avoid both
+choices. At most $3d-1$ identifiers are needed. These compatible stars
+are realizable in $K_{d,d}$; complete unused vertices with distinct
+identifiers. The edges between private vertices add no initial
+information. Comparing through this common white star removes dependence
+on the black private star. The symmetric comparison removes the white
+private star, proving the claim without violating identifier uniqueness.
+
+Color every unordered pool pair $x<y$ by the matrix
+$(f_n(x,y,p,s))_{p,s\in[d]}$. There are at most $q^{d^2}$ matrices.
+Ramsey gives $d+1$ identifiers on whose pairs the matrix is constant;
+denote it by $(a_{p,s})$. At a black center with the smallest identifier
+in this set, different local ports $p,p'$ may have arbitrary opposite
+ports $s,s'$, forcing $a_{p,s}\ne a_{p',s'}$ by properness.
+At a white center with the largest identifier, different local ports
+$s,s'$ may have the same opposite port $p$, forcing
+$a_{p,s}\ne a_{p,s'}$. All these stars occur among the tests.
+Therefore all $d^2$ entries differ, and $q\ge d^2$.
+
+Only the elementary finite form of Ramsey's theorem is used. Its
+existence follows by successively choosing a vertex and retaining a
+largest color class among its edges to the unused vertices. For $c$
+colors, a sufficiently large finite starting set permits $c(k-1)+1$
+such choices, each with a fixed color toward all later choices. At
+least $k$ chosen vertices have the same fixed color and form a
+monochromatic clique. Thus $K$ depends only on $d,q$, not on $n$ or
+on the algorithm.
+\end{proof}
+
+\begin{proof}[Randomized case]
+The preceding proof shows that every deterministic protocol with
+$q<d^2$ fails on at least one of the $N$ core tests, for each fixed $n$.
+Take $n=tK$ and partition its identifiers into $t$ disjoint pools of
+size $K$. In each pool independently choose a uniformly random core
+test and fill its unused identifiers by a fixed collection of copies
+of $K_{d,d}$. This defines a distribution on valid $n$-vertex inputs.
+
+Fix all algorithmic randomness first: one public tape and a private
+tape for each identifier. In each pool the resulting deterministic
+algorithm fails at least one of its $N$ tests. The preceding argument
+applies to any ordered identifier pool. Because input choices in
+different pools are independent and outputs in a component depend only
+on that component and the fixed global parameters,
+\[
+ \Pr_{\mathrm{input}}[\text{global success}\mid\text{all tapes}]
+ \le(1-1/N)^t.
+\]
+Average over the tapes. Some fixed input has algorithmic success
+probability at most $(1-1/N)^t$, tending to zero. This excludes any
+fixed positive global success guarantee. The argument uses independence
+of the input choices after conditioning on all tapes, not independence
+of component failures under public randomness.
+\end{proof}
+
+The quantifiers fix $d,q$ and allow arbitrarily large $n$; the Ramsey
+threshold may be enormous. A separate promise $n=\poly(d)$ is not
+covered. Nor does the proof apply unchanged if opposite ports or
+neighbor identifiers are supplied initially, or if only one endpoint
+must output. The randomized amplification uses disjoint unions. The
+theorem gives no superconstant round lower bound for a linear palette.
+
+\subsection{The small-palette obstruction}
+Chang et al.~\cite[Theorem 2]{CHLPU} prove lower bounds
+$\Omega(\log_\Delta n)$ deterministically and
+$\Omega(\log_\Delta\log n)$ randomly for $(2\Delta-2)$-edge coloring,
+even with a supplied vertex bipartition. Its reduction explains the
+threshold: divide the colors into two groups of $\Delta-1$ and orient
+their edges in opposite directions across the bipartition. Every
+degree-$\Delta$ vertex sees both groups, so the orientation has no sink.
+The published sinkless-orientation lower bound therefore applies, on
+high-girth regular instances. The relevant neighborhoods are trees;
+a finite $\Delta$-regular tree is not needed.
+
+For any fixed $\eps>0$, choose $\Delta$ large enough that
+$(2-\eps)\Delta\le2\Delta-2$, and then let $n$ grow. No round bound
+depending only on $\Delta$ can provide this palette uniformly over
+$n$. This leaves $2\Delta-1$ and $2\Delta$ untouched and gives no
+superlinear two-round palette lower bound. Without a supplied
+bipartition, the usual $\Omega(\logstar n)$ symmetry-breaking
+obstruction already occurs on cycles for a fixed finite
+palette~\cite{Linial}; hence the additive $n$-term in
+\cref{tab:general}.
+
+\subsection{A limitation of fixed-fraction expansion}
+\begin{proposition}\label{prop:expanderbarrier}
+Let $M\ge\Delta$ left vertices have neighborhoods of common size
+$a\ge1$ in a $Q$-element right universe. Suppose
+\[
+ \abs{N(I)}\ge\beta a\abs I\quad(\abs I\le\Delta),
+ \qquad 0<\beta\le1,\quad\beta\Delta\ge2.
+\]
+Then $Q>(e\beta/2)\Delta\ln(M/\Delta)$. In particular constant-fraction
+expansion requires $Q=\Omega(\Delta\log(M/\Delta))$.
+\end{proposition}
+\begin{proof}
+Put $t=\ceil{\beta a\Delta}-1$. Expansion gives $Q\ge\beta a\Delta$,
+so $a\le t<Q$. Every right-side $t$-set contains the full neighborhoods
+of at most $\Delta-1$ left vertices. Choose such a $t$-set $T$ uniformly.
+For any particular left vertex,
+\[
+ \Pr[N_i\subseteq T]
+ =\frac{\binom ta}{\binom Qa}
+ \ge\left(\frac{t-a+1}{Q}\right)^a
+ \ge\left(\frac{\beta a\Delta}{2Q}\right)^a,
+\]
+using $\beta\Delta\ge2$. Linearity of expectation gives
+$M(\beta a\Delta/(2Q))^a\le\Delta-1<\Delta$.
+Taking logarithms and maximizing $(\ln z)/z$ over positive $z$ gives
+\[
+ \ln(M/\Delta)<a\ln\frac{2Q}{\beta a\Delta}
+ \le\frac{2Q}{e\beta\Delta}.
+\]
+\end{proof}
+
+This applies to \cref{lem:expander}, whose expansion fraction exceeds
+$1/2$, for $\Delta\ge4$. Its universe size is thus optimal in order
+under that expansion requirement. The sharper families of
+\cref{thm:sharp} need not arise from such neighborhoods.
+
+\subsection{A limitation of universal list richness}
+\begin{proposition}\label{prop:richnessbarrier}
+Suppose $C\ge2r\Delta$ and there are $\Delta$ families of nonempty
+palettes in $[C]$, each palette of size at most $r$. Assume every
+$r\Delta$-set contains a palette from each family, and every choice
+of one palette from each family has distinct representatives. Then
+\[
+ (4r)^r\ge\frac{\Delta+1}{\ln(2\Delta)}.
+\]
+In particular $r=\Omega(\log\Delta/\log\log\Delta)$.
+\end{proposition}
+\begin{proof}
+Fix a set $W$ of $2r\Delta$ colors. An inclusion-maximal disjoint
+packing of palettes from one family inside $W$ contains at least
+$\Delta+1$ palettes. Otherwise its union has size at most $r\Delta$;
+its complement contains an $r\Delta$-set and hence, by richness,
+another disjoint palette, a contradiction.
+
+Include each color of $W$ independently in a random set $T$ with
+probability $1/(4r)$. Its expected size is $\Delta/2$, so
+$\Pr[\abs T\ge\Delta]\le1/2$. Use $\Delta+1$ disjoint packed palettes
+from each family. Each lies inside $T$ with probability at least
+$(4r)^{-r}$, independently within that packing. The probability that
+$T$ contains no palette from a given family is at most
+$\exp(- (\Delta+1)/(4r)^r)$.
+If the claimed inequality failed, the union bound
+\[
+ \Pr[\abs T\ge\Delta\text{ or some family has no palette in }T]
+ \le\frac12+\Delta\exp\left(-\frac{\Delta+1}{(4r)^r}\right)<1
+\]
+would give a set of fewer than $\Delta$ colors containing a palette
+from every family, contradicting distinct representatives.
+Taking logarithms yields
+$r\ln(4r)\ge\ln(\Delta+1)-\ln\ln(2\Delta)$ and hence the assertion,
+indeed with leading lower bound $(1-o(1))\ln\Delta/\ln\ln\Delta$.
+\end{proof}
+
+The table in \cref{thm:listprimitive} meets these hypotheses at white
+degree $\Delta$, with $C=2\rho\Delta^2$. Merely improving its probability
+estimates cannot make its palette-size parameter constant. This limits
+the specified universal richness and robustness requirements. Families
+adapted to more communicated list information, weaker compatibility
+conditions, or an iterative list-preserving reduction may avoid it.
+
+\section{What the results leave open}
+The elementary algorithm isolates a useful asymmetry: one endpoint
+coordinates proposals for its incident edges, and the other coordinates
+acceptance. Expansion makes the independent local decisions compatible.
+For vertex coloring there is no analogous division of constraints into
+the two endpoints of a variable; transferring this mechanism needs
+further work.
+
+The main quantitative questions are constant-round ordinary $O(\Delta)$
+coloring with a supplied bipartition, $O(h)$ rounds for arbitrary linear
+lists, and smaller final palette coefficients in $O(h)$ rounds.
+The exact two-round gap remains between a linear lower threshold and
+the $O(\Delta^{5/3})$ upper bound. The construction-specific barriers
+above do not resolve these distributed questions.
+
+There is also a representational question. A palette family can encode
+an enormous collection of local proposals while admitting a short
+expansion or matching proof. This fits the round-elimination
+viewpoint~\cite{Brandt}, where the active/passive proposal step is one
+round. A symbolic treatment retaining useful relaxations of such families
+could help explain algorithms without enumerating their full finite
+descriptions. No additional algorithmic bound is asserted here.
+
+\appendix
+
+
+
+\section{A proof of Haxell's matching condition}\label{app:haxell}
+This is the bipartite hypergraph matching condition of Haxell
+\cite{Haxell,Annamalai}, with a hyperedge consisting of one family index and
+at most $r$ universe elements.  We include its alternating-sequence
+proof to keep all matching arguments self-contained.
+
+\begin{proof}[Proof of Theorem~\ref{lem:haxell}]
+Induct on $n=|I|$, with $n=0$ immediate.  By induction, fix a matching $M$ choosing disjoint
+palettes for all families except one root $i_0$.  A matching element
+retains its family label.  We show how to augment $M$.
+
+Maintain a sequence of candidate palettes $a_1,\ldots,a_t$ and nonempty
+sets $B_1,\ldots,B_t$ of matching elements, with these invariants:
+\begin{enumerate}
+\item The candidate palettes are pairwise disjoint.
+\item $B_j$ consists of all elements of $M$ intersecting $a_j$, and
+      the sets $B_j$ are pairwise disjoint as sets of matching elements.
+\item The family of $a_j$ is the root or the family of a matching
+      element in $B_1\cup\cdots\cup B_{j-1}$.
+\end{enumerate}
+The empty sequence satisfies these conditions.  Put
+$B=\bigcup_j B_j$, and let $U$ be the union of the candidate palettes
+and all palettes in $B$.  Each element of $B$ intersects exactly its
+associated candidate; these intersections are disjoint because matching
+palettes are disjoint.  Since $t\le|B|$,
+\[
+ |U|\le rt+r|B|-|B|\le(2r-1)|B|.
+\]
+Let $J$ contain the root and all families represented by $B$, so that
+$|J|=|B|+1$.  The hypothesis guarantees a palette $a$ from a family in
+$J$ that avoids $U$.
+
+If $a$ intersects an element of $M$, append $a$ and all its blockers
+to the sequence.  Its blockers are new, because $a$ avoids $U$.
+A new blocker cannot intersect an earlier candidate, since all blockers
+of those candidates were already in $B$.  Thus every invariant persists.
+
+Otherwise $a$ is unblocked.  If its family is the root, insert $a$ into
+$M$ and finish.  If not, its family has a unique matching element
+$b\in B_j$.  Replace $b$ in $M$ by $a$, discard all sequence entries
+after $j$, and remove $b$ from $B_j$.  This is a valid matching swap,
+and earlier candidates avoid the new matching element $a$.
+If $B_j$ is still nonempty, resume the procedure.  If it is empty,
+remove entry $j$ and treat $a_j$ as the next unblocked palette.
+By the third invariant, its family is the root or has its matching
+element in an earlier blocker set.  Repeat the same swap rule.
+This cascade moves strictly backwards, so it either finishes at the
+root or stops with an admissible sequence having only nonempty blocker
+sets.  The earlier invariants remain valid throughout: a palette
+inserted into $M$ avoids all earlier candidates, and no earlier candidate
+depends on the removed blocker; any later candidate that did depend
+on it was discarded.
+
+To prove termination, associate with every admissible sequence the
+length-$n$ integer vector
+\[
+ (|B_1|,\ldots,|B_t|,n,\ldots,n).
+\]
+There are at most $n-1$ matching elements, and $t\le n-1$.
+Appending a blocker set strictly decreases this vector in lexicographic
+order, because the new entry is at most $n-1$.
+A swap and its backwards cascade, unless they finish, leave a prefix
+unchanged and decrease the blocker count at the next retained entry;
+truncation affects only later coordinates.  They therefore strictly
+decrease the vector as well.  Only finitely many such vectors exist.
+The procedure must finish the augmentation, proving the induction step.
+\end{proof}
+
+\section{An explicit coefficient of \texorpdfstring{$16.5$}{16.5}}
+\label{app:constant}
+
+Write $d=\Delta$ throughout this appendix. The elementary proof of Theorem~\ref{thm:linearordinary} gives $512d$ colors.
+The following refinement preserves its asymptotic round complexity.  Its
+purpose is to record a concrete coefficient; no optimality is claimed.
+
+We prove six constant-parameter palette reductions, as used in Theorem~\ref{thm:smallconstant}.  In every row of
+Table~\ref{tab:constant-parameters}, an input palette of size
+$\lfloor Ld\rfloor$ is replaced by one of size $\lfloor Rd\rfloor$.
+Every sampled candidate has exactly six elements.
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{c r r r}
+\toprule
+Row & $L$ & $R$ & Candidates per family $m$\\
+\midrule
+1 & $512$ & $100$ & $500$\\
+2 & $100$ & $20$ & $3500$\\
+3 & $20$ & $18$ & $6200$\\
+4 & $18$ & $17$ & $10400$\\
+5 & $17$ & $83/5$ & $10200$\\
+6 & $83/5$ & $33/2$ & $10500$\\
+\bottomrule
+\end{tabular}
+\caption{Six reductions with a common existence proof.}
+\label{tab:constant-parameters}
+\end{table}
+
+Fix a row, and suppose $d\ge6000$.  Put
+\[
+ M=\lfloor Ld\rfloor,\qquad Q=\lfloor Rd\rfloor,\qquad
+ S=R-\frac1{1000},\qquad \kappa=11.
+\]
+Independently sample $m$ uniform six-element subsets of $[Q]$ for each of
+$M$ families.  Repetitions between samples are allowed.  The choice of
+$S$ handles both rounding and sampling without replacement:
+\begin{equation}\label{eq:constant-rounding}
+ Q-5\ge Rd-6\ge Sd.
+\end{equation}
+
+There are two kinds of bad events.  A failure of robust Hall yields $k$
+distinct families and a $(k-1)$-element set containing a candidate from
+each family, for some $1\le k\le d$.  The probability of such a witness,
+already summed over the choices of families and of the containing set,
+is at most
+\begin{equation}\label{eq:constant-hall-count}
+ A_k\le \binom{M}{k}\binom{Q}{k-1}
+       \left[m\left(\frac{k}{Sd}\right)^6\right]^k.
+\end{equation}
+For $k=1$ the event is impossible, but including its upper bound is harmless.
+For disjoint palette choices, we impose the stronger sufficient condition
+that no $k$ families have all their candidates met by an $11k$-element
+set, for any $1\le k\le d$.  This implies the hypothesis of
+Theorem~\ref{lem:haxell}: a smaller forbidden transversal can be enlarged
+because $Q\ge11d$.  Write
+\[
+ h(x)=1-\left(1-\frac{11x}{S}\right)^6,\qquad 0<x\le1.
+\]
+For a fixed set of size $11k$, the probability that a uniform six-element
+subset meets it is
+\[
+ 1-\prod_{j=0}^5\left(1-\frac{11k}{Q-j}\right)
+ \le h(k/d),
+\]
+by \eqref{eq:constant-rounding}.  Thus the second bad-event probability is
+\begin{equation}\label{eq:constant-cover-count}
+ B_k\le\binom{M}{k}\binom{Q}{11k}h(k/d)^{mk}.
+\end{equation}
+
+Here is a uniform bound on both sums.  Let
+$H(z)=-z\log z-(1-z)\log(1-z)$ denote binary entropy, with natural
+logarithms, and define
+\begin{align*}
+ F_H(x)&=R H(x/R)+L H(x/L)+x\log m+6x\log(x/S),\\
+ F_C(x)&=L H(x/L)+R H(11x/R)+mx\log h(x),\\
+ p&=h(1),\qquad
+ \alpha=\frac{h'(1)}{h(1)},\qquad
+ \beta=m\alpha-12,\\
+ a&=\frac{e^2 LRm}{S^6},\qquad
+ b=eL\left(\frac{eR}{11}\right)^{11}p^m.
+\end{align*}
+The following numerical bounds hold for all six rows:
+\begin{equation}\label{eq:constant-margins}
+ F_H(1)<-\frac9{1000},\quad F_C(1)<-\frac3{25},\quad
+ a<2,\quad \beta>160,\quad \log b<6.
+\end{equation}
+A rational certificate for these bounds is given below.
+
+For completeness, the entropy estimate used here follows directly from
+the binomial theorem: for $0<t<N$, the $t$th summand in
+$(t/N+(1-t/N))^N=1$ gives
+$\binom Nt\le\exp(NH(t/N))$; the endpoints follow by continuity.
+For fixed $t$, the function $uH(t/u)$ increases with $u$, since its
+ derivative is $-\log(1-t/u)>0$.  Hence the same upper bound is valid with
+any real upper bound on the population.  Also
+$\binom Q{k-1}\le\binom Qk$ for $k\le d$, since $Q\ge2d$.
+Applying these facts to \eqref{eq:constant-hall-count} and
+\eqref{eq:constant-cover-count} gives
+\begin{equation}\label{eq:constant-entropy-bounds}
+ A_k\le e^{dF_H(k/d)},\qquad B_k\le e^{dF_C(k/d)}.
+\end{equation}
+
+Both ratios $F_H(x)/x$ and $F_C(x)/x$ increase on $(0,1]$.
+Indeed, differentiation gives
+\begin{align*}
+ x^2\left(\frac{F_H(x)}x\right)'
+ &=R\log(1-x/R)+L\log(1-x/L)+6x,\\
+ x^2\left(\frac{F_C(x)}x\right)'
+ &=L\log(1-x/L)+R\log(1-11x/R)
+   +mx\frac{xh'(x)}{h(x)}.
+\end{align*}
+Writing $y=1-11x/S$ shows that the elasticity
+\[
+ \frac{xh'(x)}{h(x)}
+ =\frac{6}{1+y^{-1}+\cdots+y^{-5}}
+\]
+is decreasing, and hence is at least $\alpha$.
+The inequality $-\log(1-u)\le u/(1-u)$, together with
+$L,R\ge33/2$, bounds the two negative terms in the first derivative
+below by $-2x$ each.  In the second derivative they are bounded below
+by $-2x$ and $-33x$, respectively.  Since
+$m\alpha=\beta+12>172$, both derivatives are positive.
+It follows from \eqref{eq:constant-margins} and
+\eqref{eq:constant-entropy-bounds} that for $k>d/2$,
+\[
+ A_k\le e^{-9k/1000},\qquad B_k\le e^{-9k/1000}.
+\]
+Each large-witness sum is therefore smaller than
+\[
+ \frac{e^{-27}}{1-e^{-9/1000}}
+ \le\frac{1009}{9\cdot2^{27}}<\frac1{100}.
+\]
+Here $d\ge6000$, $e>2$, and
+$1-e^{-u}\ge u/(1+u)$ were used.
+
+Small witnesses require the factors depending on $k/d$.  The bound
+$\binom Nt\le(eN/t)^t$ applied to the same counting formulas gives
+\[
+ A_k\le\left[a(k/d)^4\right]^k.
+\]
+Integrating the elasticity inequality gives $h(x)\le px^\alpha$, so
+\[
+ B_k\le\left[b(k/d)^\beta\right]^k.
+\]
+For $k\le d/2$, the first bracket is less than $2/16=1/8$.
+The second is less than $e^6 2^{-160}<1/8$.
+Each small-witness sum is at most $\sum_{k\ge1}8^{-k}=1/7$.
+Consequently the probability of any obstruction is less than
+\[
+ \frac27+\frac2{100}<1.
+\]
+A suitable table exists in every row.  Theorem~\ref{lem:haxell} and
+Lemma~\ref{lem:protocol} turn it into the stated palette reduction.
+
+\paragraph{Self-contained numerical certificate.}
+All entries of Table~\ref{tab:constant-certificate} are rational bounds;
+a terminating recipe to check them follows.  In its last two columns,
+$A=9LRm/S^6$ is a rational upper bound on $a$ because $e<3$, and
+$\beta=m\alpha-12$ is itself rational.  The entries in the two middle
+columns are open intervals containing the indicated endpoint values.
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{c c c r r}
+\toprule
+Row & $F_H(1)$ & $F_C(1)$ & $A<$ & $\beta>$\\
+\midrule
+1 & $(-8.578853,-8.578852)$ & $(-301.671413,-301.671412)$ & $0.001$ & $354.334$\\
+2 & $(-0.243118,-0.243117)$ & $(-9.810845,-9.810844)$ & $0.985$ & $202.859$\\
+3 & $(-0.777223,-0.777222)$ & $(-5.473060,-5.473059)$ & $0.591$ & $190.828$\\
+4 & $(-0.084094,-0.084093)$ & $(-5.209509,-5.209508)$ & $1.188$ & $209.447$\\
+5 & $(-0.044046,-0.044045)$ & $(-0.619635,-0.619634)$ & $1.239$ & $165.355$\\
+6 & $(-0.009584,-0.009583)$ & $(-0.121551,-0.121550)$ & $1.284$ & $160.982$\\
+\bottomrule
+\end{tabular}
+\caption{Outward rational bounds for the six parameter rows.}
+\label{tab:constant-certificate}
+\end{table}
+
+For a positive rational number $u$, choose an integer $j$ so that
+$1\le v=2^{-j}u<2$, and put $z=(v-1)/(v+1)$.  With $N=40$, define
+\[
+ P(v)=2\sum_{i=0}^{N-1}\frac{z^{2i+1}}{2i+1},\qquad
+ E(v)=\frac{2z^{2N+1}}{(2N+1)(1-z^2)}.
+\]
+The geometric expansion of $1/(1-z^2)$, integrated term by term on
+$[0,z]$, proves
+\[
+ P(v)\le\log v\le P(v)+E(v).
+\]
+Apply the same formula at $v=2$ to enclose $\log2$, and use
+$\log u=j\log2+\log v$.  When multiplying an interval by a negative
+number, interchange its endpoints.  Evaluate $H$, $F_H(1)$, and $F_C(1)$
+from their displayed formulas using interval addition and rational scalar
+multiplication.  This produces the open enclosures in
+Table~\ref{tab:constant-certificate}; every operation is rational, and
+the error formula specifies all discarded terms.  The inequalities for
+$A$ and $\beta$ are direct rational substitutions.
+
+The remaining estimate $\log b<6$ does not need another numerical check.
+Expanding the entropy terms gives
+\begin{align*}
+ \log b-F_C(1)
+ &=1+(L-1)\log(1-1/L)\\
+ &\quad+11+(R-11)\log(1-11/R).
+\end{align*}
+The first line is less than $1/L\le2/33$.
+The function $11+(R-11)\log(1-11/R)$ decreases with $R$, since its
+derivative is $\log(1-11/R)+11/R<0$.  At $R=33/2$ it equals
+$11-(11/2)\log3<11/2$, because $e<3$.
+Since $F_C(1)<0$, these estimates imply $\log b<6$ and complete
+\eqref{eq:constant-margins}.
+
+
+\section{Elementary vertex-coloring tools}\label{app:defective}
+\begin{lemma}[Defective color reduction]\label{lem:defective-elementary}
+Let a graph of maximum degree at most $D\ge1$ have a proper vertex
+$M$-coloring.  For every real $p\ge1$, a deterministic algorithm computes
+a vertex coloring with defect at most $D/p$ and
+$O(p^2\log(2p))$ colors in $O(1+\log^* M)$ rounds.
+The constants in both bounds are absolute.
+\end{lemma}
+
+\begin{proof}
+We give a slightly less economical version of the color-reduction method
+of Kuhn~\cite[Section~4]{Kuhn}; the extra logarithm in the palette will be
+irrelevant to our applications.  A coloring has defect $b$ if each vertex
+has at most $b$ neighbors with its color.
+
+We first prove a one-round reduction.  Suppose the current coloring has
+$m\ge2$ colors and defect at most $b$, and choose an integer $q\ge1$.
+Put $a=\lceil8q\ln m\rceil$.  There exist functions
+$f_i:[a]\to[4q]$, one for each old color $i\in[m]$, such that distinct
+functions agree at at most $a/q$ arguments.  Indeed, choose all their
+values independently and uniformly.  For two fixed indices, the
+probability of agreement at more than $a/q$ arguments, with
+$t=\lfloor a/q\rfloor+1$, is zero if $t>a$, and otherwise at most
+\[
+ \binom at(4q)^{-t}
+ \le \left(\frac{3a}{4qt}\right)^t
+ \le (3/4)^t
+ \le (3/4)^{8\ln m}.
+\]
+A union bound over fewer than $m^2$ pairs gives probability less than one,
+since $8\ln(4/3)>2$.  Fix such a table by finite exhaustive search.
+
+After receiving its neighbors' old colors, a vertex of old color $i$
+chooses an argument $x$ minimizing the number of neighbors of color $j$
+for which $f_j(x)=f_i(x)$, and outputs $(x,f_i(x))$.
+Neighbors with old color $i$ contribute at most $b$ to this count at
+every argument.  Averaged over the arguments, all other neighbors
+contribute at most $D/q$.  Consequently the new defect is at most
+$b+D/q$.  A neighbor with the same new color is necessarily included
+in the count at the chosen argument, even though it chooses its own
+argument independently.  Writing $L=\log_2 m\ge1$, the new number of
+colors is at most
+\begin{equation}\label{eq:defective-one-step}
+ 4qa\le64q^2L.
+\end{equation}
+
+Let $K=2^{15}$.  Starting from the proper coloring, repeat this reduction
+while $m>(Kp)^{32}$, each time taking
+$q=\lceil16p(\log_2m)^2\rceil$.  The new palette bound $m'$ satisfies
+\[
+ m'\le Kp^2L^5,\qquad
+ L':=\log_2m'\le A+5\log_2L,
+ \qquad A=15+2\log_2p.
+\]
+Whenever a reduction is performed, $L>32(15+\log_2p)\ge480$.
+Thus $A<L/16$ and $\log_2L\le L/16$, whence $L'<L/2$.
+If the successive logarithms before these reductions are
+$L_0,\ldots,L_{t-1}$, their reciprocal squares have sum at most $4/3$:
+read the sequence backwards and use $L_i>2L_{i+1}$ and
+$L_{t-1}\ge1$.  The total increase in defect is therefore at most
+\[
+ \sum_{i<t}\frac{D}{16pL_i^2}\le\frac{D}{12p}.
+\]
+
+There are $O(1+\log^*M)$ reductions, uniformly in $p$.
+To see this explicitly, if $5\log_2L\le A$, then
+$L'\le2A<32(15+\log_2p)$ and the loop stops.
+Every other step obeys $L'\le10\log_2L$.
+Above a fixed absolute threshold, two applications of
+$x\mapsto10\log_2x$ are bounded by one application of $x\mapsto\log_2x$.
+For example, for $x\ge2^{1024}$ this follows from
+$10\log_2(10z)\le z$ for $z=\log_2x\ge1024$.
+Below that threshold, the preceding halving bound allows only an
+absolute constant number of further iterations.
+
+At the end $m\le(Kp)^{32}$.  Apply the one-round reduction once more
+with $q=\lceil2p\rceil$.  Its defect contribution is at most $D/(2p)$,
+so the final defect is less than $D/p$.  By
+\eqref{eq:defective-one-step}, its palette has size
+\[
+ O(p^2\log m)=O(p^2\log(2p)).
+\]
+If the initial proper coloring has at most one color, the graph is
+edgeless and requires no reduction.  This completes the proof.
+\end{proof}
+
+\begin{corollary}[Initial proper vertex coloring]\label{cor:initial-vertex-coloring}
+A graph of maximum degree at most $D\ge1$, with a proper $M$-vertex coloring, admits a deterministic proper $O(D^2)$-vertex coloring in $O(1+\log^* M)$ rounds. In particular, polynomial-size unique identifiers on an $n$-vertex graph give such a coloring in $O(1+\log^*n)$ rounds.
+\end{corollary}
+
+\begin{proof}
+This is Linial's color-reduction theorem~\cite{Linial}; the following
+derivation supplies the version needed here.  Starting from the proper $M$-coloring, apply
+Lemma~\ref{lem:defective-elementary} with $p=2D$.
+The resulting defect is less than $1/2$, hence zero, and its palette
+has size at most $C D^2\log(2D)$ for an absolute constant $C$.
+Choose a sufficiently large fixed constant $c$, and a prime
+$cD<q<2cD$, as guaranteed by Bertrand's postulate.
+Taking $c$ large enough ensures both $q>2D$ and
+$q^3\ge CD^2\log(2D)$ for every integer $D\ge1$.
+Encode the old colors as distinct polynomials of degree at most two
+over the field $\mathbb F_q$.
+After learning its neighbors' polynomials, each vertex chooses a field
+element $x$ at which its polynomial differs from every neighbor's
+polynomial.  Such an $x$ exists, since each neighbor forbids at most
+two arguments and $q>2D$.  Output $(x,P(x))$.
+If adjacent vertices choose the same argument, their values differ;
+otherwise their first coordinates differ.  This is therefore a proper
+$q^2=O(D^2)$-coloring, obtained in one additional round. For the identifier corollary take $M=n^{O(1)}$.
+\end{proof}
+
+\section{Constant-time coloring from large lists}\label{app:fhk}
+\begin{lemma}[Constant-round list coloring with large lists]
+\label{lem:fhk-elementary}
+There is an absolute constant $B$ such that a graph of maximum degree
+$D\ge2$, supplied with a proper $s$-vertex-coloring, admits a
+deterministic list-coloring algorithm in constant time whenever every
+list has at least
+\[
+ \max\{s,\lceil B D^2\ln(2D)\rceil\}
+\]
+colors.  The color labels may be arbitrary finite strings.  For
+example, $B=2^{20}$ suffices.
+\end{lemma}
+
+\begin{proof}
+We prove the needed special case of the conflict-coloring method of
+Fraigniaud, Heinrich, and Kosowski~\cite{FHK}, with deliberately generous
+constants.  A conflict-coloring instance has the common local list
+$[l]$ at each vertex.  Each edge specifies forbidden pairs of local
+colors; for each color at either endpoint, at most $b$ colors at the
+other endpoint are forbidden.  Write $R=l/b$.
+
+We first describe one simplification step, valid when $R\ge96D^2$.
+Set
+\[
+ k=\left\lfloor\frac{l}{16bD}\right\rfloor,
+ \qquad t=\left\lfloor\frac{k}{D}\right\rfloor-1,
+ \qquad N=\binom lk,
+ \qquad Q=\binom{kb}{t}\binom l{k-t}.
+\]
+Candidates for the new local colors are the $k$-subsets of $[l]$.
+Declare candidates $S$ and $T$ at adjacent vertices incompatible if
+more than $t$ elements of $S$ conflict with at least one element of $T$,
+or more than $t$ elements of $T$ conflict with at least one element of
+$S$.  For a fixed $S$, its elements conflict with at most $kb$ colors
+at the other endpoint.  Thus there are at most $Q$ candidates $T$
+containing at least $t$ such colors: choose $t$ of these colors and
+then the remaining $k-t$ elements.  Counting the other condition with
+the endpoints exchanged shows that the bipartite incompatibility graph
+between all $N$ candidates at either endpoint has at most $2NQ$ edges.
+
+At a vertex discard every candidate with more than $4DQ$
+incompatibilities along any one incident edge.  For each edge at most
+$N/(2D)$ candidates are discarded, so at least $N/2$ remain.  Retain
+the first $l'=\lfloor N/2\rfloor$ in lexicographic order and renumber
+them by $[l']$.  Exchange these retained lists with neighbors.
+The new conflict instance has conflict degree at most $b'=4DQ$;
+all of its local input, including the renumbered forbidden pairs,
+is obtained in one communication round from the previous instance.
+
+Conversely, any solution to the new instance specifies a candidate
+$S_v$ at each vertex.  After one exchange of these candidates, vertex
+$v$ chooses an element of $S_v$ conflicting with no element of any
+neighbor's candidate.  Each neighbor forbids at most $t$ elements
+of $S_v$, and $Dt<k$, so such an element exists.  The resulting
+colors solve the preceding conflict instance.
+
+We record how much the list-to-conflict ratio improves.  Our assumptions
+give $k\ge4D$, $t\ge k/(2D)$, and $l-k\ge15bDk$.
+Using $\binom{kb}{t}\le(ekb/t)^t$ and $l'\ge N/3$, we obtain
+\[
+ \frac{l'}{b'}
+ \ge\frac1{12D}\frac{\binom lk}
+          {\binom{kb}{t}\binom l{k-t}}
+ \ge\frac1{12D}
+       \left(\frac{(l-k)t}{ek^2b}\right)^t
+ \ge\frac{2^t}{16D}.
+\]
+Indeed, the base in parentheses is at least $15/(2e)>2$.
+Also
+$t\ge R/(16D^2)-3\ge R/(32D^2)$.
+Consequently each simplification guarantees
+\begin{equation}\label{eq:conflict-amplify}
+ R'\ge\frac1{16D}\exp\left(\frac{R}{64D^2}\right).
+\end{equation}
+
+Now truncate the original lists to the common length
+$l=\max\{s,\lceil2^{20}D^2\ln(2D)\rceil\}$.
+In one round exchange the ordered original lists and local port numbers.
+At each vertex
+replace its labels by their local ranks in $[l]$ and record, for each
+neighbor, the pairs of ranks representing equal actual colors.
+This is a conflict instance with $b=1$.  The original labels will only
+be used again to decode the eventual answer.
+
+Apply the simplification twice, obtaining ratios $R_1$ and $R_2$.
+Equation~\eqref{eq:conflict-amplify} gives
+\[
+ R_1\ge l^8,
+ \qquad R_2\ge\exp(l^6).
+\]
+Here are elementary estimates covering all allowed parameters.
+The function $x/(64D^2)-8\ln x$ is increasing for
+$x\ge2^{20}D^2\ln(2D)$.  At its left endpoint,
+\[
+ 8\ln x+\ln(16D)
+ \le108\ln(2D)
+ <2^{14}\ln(2D)=x/(64D^2),
+\]
+where we used
+$\ln(2^{20})\le10\ln(2D)$,
+$\ln D\le\ln(2D)$,
+$\ln\ln(2D)\le\ln(2D)$, and
+$\ln(16D)\le4\ln(2D)$.
+This proves the first bound.  Since $D^2\le l$ and $l\ge128$,
+$l^8/(64D^2)-\ln(16D)\ge l^6$, proving the second.
+In particular the hypotheses of both simplifications hold.
+
+It remains to solve the twice-simplified instance without further
+communication.  There are only finitely many possible normalized
+local inputs at this point.  We give a bound that does not depend on
+the original color names.  An initial normalized local input consists
+of its degree, its incident ports and opposite port numbers, and at
+most $D$ Boolean $l\times l$ conflict matrices.  Use $D$ port slots, each storing a presence bit, an opposite-port number in $\lceil\log_2(D+1)\rceil$ bits, and an $l\times l$ conflict matrix. Since $l\ge128$ and $D^2\le l$, this uses at most $2Dl^2$ bits.  After two simplification rounds a local
+input is a deterministic function of a depth-two unfolded port-labelled
+neighborhood.  Such a neighborhood has at most $2D^2$ vertices.
+Including its port incidences and the normalized initial inputs,
+it has a fixed-length encoding of $8D^3l^2$ bits, padding unused fields.
+Hence the set
+$\mathcal I$ of possible twice-simplified local inputs satisfies
+\[
+ |\mathcal I|\le2^{8D^3l^2}.
+\]
+All vertices can enumerate a common finite superset of these inputs
+by enumerating such neighborhood encodings, performing the two
+local transformations, and discarding malformed encodings, encodings with initial conflict degree greater than one, and encodings for which a required retained list is too short. Retain the resulting local inputs whose conflict matrices obey the prescribed conflict-degree bound. Every actual input survives these checks.
+
+Pair each type in $\mathcal I$ with a proper vertex color in $[s]$.
+In a fixed order, assign an output from the common twice-simplified
+list to every such pair.  When assigning a pair, avoid any color
+that conflicts, along any local port, with the output already assigned
+to any earlier pair.  Each earlier pair excludes at most $Db_2$
+colors, where $b_2$ is the new conflict-degree bound.  This greedy
+table exists because
+\[
+ D s|\mathcal I|<\exp(l^6)\le R_2=l_2/b_2.
+\]
+For the strict inequality, use $s\le l$, $D^2\le l$, and $l\ge128$:
+the logarithm of its left side is at most
+$2\ln l+8D^3l^2\ln2\le9l^4<l^6$.
+Adjacent vertices have different proper vertex colors, hence different
+type--color pairs.  The later pair in the fixed order avoids the
+earlier pair's output on their actual edge.  Looking up one's pair
+therefore gives a valid conflict-coloring without communication.
+
+Finally invert the two simplifications, one round each, and translate
+local ranks back to actual input colors.  This uses a constant number
+of communication rounds and always returns a color in the original
+list.  The construction is deterministic: all tables are finite and
+chosen canonically, with unrestricted local computation.
+\end{proof}
+
+\phantomsection
+\addcontentsline{toc}{section}{References}
+\begingroup\small
+\begin{thebibliography}{99}
+
+\bibitem{Hall}
+Philip Hall.
+On representatives of subsets.
+\emph{Journal of the London Mathematical Society}, 10:26--30, 1935.
+\href{https://doi.org/10.1112/jlms/s1-10.37.26}{doi:10.1112/jlms/s1-10.37.26}.
+
+\bibitem{Haxell}
+Penny E. Haxell.
+A condition for matchability in hypergraphs.
+\emph{Graphs and Combinatorics}, 11(3):245--248, 1995.
+\href{https://doi.org/10.1007/BF01793010}{doi:10.1007/BF01793010}.
+
+\bibitem{Annamalai}
+Chidambaram Annamalai.
+Finding perfect matchings in bipartite hypergraphs.
+In \emph{Proceedings of the ACM--SIAM Symposium on Discrete Algorithms
+(SODA)}, 2016.
+Full version: \href{https://arxiv.org/abs/1509.07007v2}{arXiv:1509.07007v2}, 2016.
+
+\bibitem{BGIKS}
+Radu Berinde, Anna C. Gilbert, Piotr Indyk, Howard Karloff, and Martin J. Strauss.
+Combining geometry and combinatorics: A unified approach to sparse signal recovery.
+\href{https://arxiv.org/abs/0804.4666}{arXiv:0804.4666}, 2008.
+
+\bibitem{Linial}
+Nathan Linial.
+Locality in distributed graph algorithms.
+\emph{SIAM Journal on Computing}, 21(1):193--201, 1992.
+\href{https://doi.org/10.1137/0221015}{doi:10.1137/0221015}.
+
+\bibitem{Kuhn}
+Fabian Kuhn.
+Weak graph colorings: Distributed algorithms and applications.
+In \emph{Proceedings of the ACM Symposium on Parallelism in Algorithms
+and Architectures (SPAA)}, pages 138--144, 2009.
+\href{https://people.csail.mit.edu/fkuhn/publications/spaa09b.pdf}{Author's version}.
+
+\bibitem{BEK}
+Leonid Barenboim, Michael Elkin, and Fabian Kuhn.
+Distributed $(\Delta+1)$-coloring in linear (in $\Delta$) time.
+\emph{SIAM Journal on Computing}, 43(1):72--95, 2014.
+\href{https://doi.org/10.1137/12088848X}{doi:10.1137/12088848X}.
+
+\bibitem{BKO}
+Alkida Balliu, Fabian Kuhn, and Dennis Olivetti.
+Distributed edge coloring in time quasi-polylogarithmic in Delta.
+In \emph{Proceedings of the ACM Symposium on Principles of Distributed
+Computing (PODC)}, pages 289--298, 2020.
+Full version: \href{https://arxiv.org/abs/2002.10780}{arXiv:2002.10780}.
+
+\bibitem{BBKO}
+Alkida Balliu, Sebastian Brandt, Fabian Kuhn, and Dennis Olivetti.
+Distributed edge coloring in time polylogarithmic in $\Delta$.
+In \emph{Proceedings of the ACM Symposium on Principles of Distributed
+Computing (PODC)}, 2022.
+Full version: \href{https://arxiv.org/abs/2206.00976}{arXiv:2206.00976}.
+Journal version: \emph{SIAM Journal on Computing}, 55(4), 2026,
+\href{https://doi.org/10.1137/24M1715866}{doi:10.1137/24M1715866}.
+
+\bibitem{FHK}
+Pierre Fraigniaud, Marc Heinrich, and Adrian Kosowski.
+Local conflict coloring.
+In \emph{Proceedings of the IEEE Symposium on Foundations of Computer
+Science (FOCS)}, 2016.
+Full version: \href{https://arxiv.org/abs/1511.01287v2}{arXiv:1511.01287v2}, 2017.
+
+\bibitem{MT}
+Yannic Maus and Tigran Tonoyan.
+Local conflict coloring revisited: Linial for lists.
+In \emph{34th International Symposium on Distributed Computing (DISC 2020)},
+volume 179 of \emph{LIPIcs}, pages 16:1--16:18, 2020.
+\href{https://doi.org/10.4230/LIPIcs.DISC.2020.16}{doi:10.4230/LIPIcs.DISC.2020.16}.
+
+\bibitem{CHLPU}
+Yi-Jun Chang, Qizheng He, Wenzheng Li, Seth Pettie, and Jara Uitto.
+Distributed edge coloring with small palettes and a special case of the
+constructive Lov\'asz local lemma.
+\href{https://arxiv.org/abs/1708.04290v3}{arXiv:1708.04290v3}, 2026.
+Preliminary version: \emph{The complexity of distributed edge coloring with
+small palettes}, in \emph{Proceedings of SODA}, 2018.
+
+\bibitem{Brandt}
+Sebastian Brandt.
+An automatic speedup theorem for distributed problems.
+In \emph{Proceedings of the ACM Symposium on Principles of Distributed
+Computing (PODC)}, 2019.
+Full version: \href{https://arxiv.org/abs/1902.09958}{arXiv:1902.09958}.
+
+\end{thebibliography}
+\endgroup
+
+\end{document}

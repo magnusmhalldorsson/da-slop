@@ -1,0 +1,858 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=29mm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{bookmark}
+\definecolor{linkblue}{RGB}{25,65,115}
+\hypersetup{colorlinks=true,linkcolor=linkblue,citecolor=linkblue,
+  urlcolor=linkblue,
+  pdftitle={Distributed List Coloring from Lists of Size d(d+1)},
+  pdfauthor={AI-generated research note}}
+\urlstyle{same}
+\setlist{itemsep=3pt,topsep=5pt}
+\setlength{\emergencystretch}{2em}
+\numberwithin{equation}{section}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newcommand{\Nout}{N^{+}}
+\newcommand{\Lin}{L_{\mathrm{in}}}
+\newcommand{\full}{\mathcal F}
+\newcommand{\exc}{\mathcal E}
+\newcommand{\normal}{\mathcal N}
+\newcommand{\first}{\operatorname{first}}
+\newcommand{\outdeg}{\deg^{+}}
+\newcommand{\logstar}{\log^{*}}
+\newcommand{\LOCAL}{\mathsf{LOCAL}}
+\title{Distributed List Coloring\\from Lists of Size
+  \texorpdfstring{$d(d+1)$}{d(d+1)}}
+\author{AI-generated research note}
+\date{30 September 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Let a finite simple graph be supplied with an orientation of maximum
+outdegree at most \(d\geq 2\). We give a uniform deterministic distributed
+algorithm that properly colors the graph from arbitrary vertex lists of
+size at least \(d(d+1)\) in \(O(\logstar M+d^2)\) rounds, where distinct
+vertex identifiers lie in a commonly known namespace of size \(M\).
+The algorithm uses only information obtained by reading outgoing
+neighbors. Indegree is unrestricted, and the round bound has no
+dependence on the universe of list colors. The construction removes one
+color from the sufficient list size \(d(d+1)+1\) obtained by an earlier
+two-sweep method. Its additional ingredient is a canonical-prefix
+argument: the only possible equality obstruction lies in a fixed
+independent set, and each vertex of that set has two list colors absent
+from the entire input lists of all but one outgoing neighbor.
+We give all combinatorial, preprocessing, and round-complexity proofs.
+\end{abstract}
+
+\section{Context and contribution}
+\label{sec:context}
+
+List coloring assigns each vertex \(v\) a color from its own prescribed
+list, with different colors at adjacent vertices. The bound in this
+note is a bound on the size of \emph{each list}, not on the total number
+of distinct colors appearing anywhere in the input or output.
+In particular, different vertices may have disjoint lists.
+
+The starting point is the two-sweep approach to distributed coloring.
+Barenboim and Elkin introduced increasing and decreasing color-class
+sweeps for defective coloring~\cite{BE09}. Fuchs and Kuhn extended this
+approach to list defective coloring~\cite{FK24,FK26}: a vertex first
+chooses a set of candidate colors, and a reverse sweep selects its final
+color. We use this candidate-set architecture and the restriction to
+outgoing neighbors from their oriented setting. The preliminary
+reduction of identifier colors to a quadratic palette uses Linial's
+separating-set method~\cite{Linial92}, including a finite-field
+polynomial construction of Erd\H{o}s, Frankl, and F\"uredi~\cite{EFF85}.
+A complete construction and analysis appear in
+Section~\ref{sec:preprocessing}.
+
+For a precise comparison, the case with all allowed defects zero
+and auxiliary parameter \(\varepsilon=0\) in
+Fuchs and Kuhn's theorem~\cite[Theorem~1.1]{FK24}
+(also~\cite[Theorem~2.1]{FK26}) permits lists of a common size \(s\)
+when
+\[
+ s>\max\{p,s/p\}\,d
+\]
+for an integer parameter \(p\geq1\). Taking \(p=d+1\) and
+\(s=d(d+1)+1\) satisfies this condition, since
+\(\max\{p,s/p\}=d+1\). Their earlier 2024 work therefore already
+provides this comparison bound.
+
+We show that \(s=d(d+1)\) suffices for \(d\geq2\).
+The proof identifies the exact equality case in a candidate-set
+counting argument, reserves two colors at every vertex in a
+statically defined exceptional set, and runs the two sweeps on the
+remaining vertices. Crucially, the reserved colors are isolated
+from the other neighbors' \emph{full input lists}; isolation from
+their initial candidate sets would not suffice.
+This is a sufficient bound, with no claim of optimality.
+
+\section{Model and main theorem}
+\label{sec:model}
+
+The empty graph is trivially colored, so assume \(n=|V|\geq1\).
+The graph \(G=(V,E_G)\) is finite and simple, with exactly one supplied
+direction on each edge. Write \(v\to u\) for a directed edge and set
+\[
+ \Nout(v)=\{u:v\to u\},\qquad
+ \outdeg(v)=|\Nout(v)|.
+\]
+A common integer \(d\geq2\) bounds every outdegree. There is no
+restriction on indegree, connectedness, or directed cycles. The
+outgoing edges at a vertex have distinct local port labels, ordered
+locally; no consistency between port orders at different vertices is
+required.
+
+Each vertex \(v\) has a distinct identifier in
+\([M]=\{1,\ldots,M\}\), where \(M\geq1\) is a common known bound.
+It also receives a finite set \(\Lin(v)\) of distinct color names.
+Names have finite representations and a common total order, with
+consistent equality and comparison available as local computation.
+For example, names may be arbitrary nonnegative integers. There is
+no supplied bound on their magnitude, on the union of the lists, or on
+the lengths of their representations.
+
+We use the synchronous \(\LOCAL\) convention of unrestricted local
+computation and message size; see Linial~\cite{Linial92} for the
+distributed locality framework. More specifically, the algorithm
+obeys the following \emph{forward-information restriction}.
+Initially, a vertex knows its own identifier, input list, outgoing
+ports, and the common parameters. In one round it can read the
+previous-round state of every outgoing neighbor and then update its
+own state. Its transition reads no incoming-neighbor state or incoming
+incidence information. Thus \emph{forward} describes which vertices may
+be observed: for \(v\to u\), \(v\) reads information from \(u\).
+It is not a requirement that messages travel from tail to head.
+Ordinary two-way communication on the underlying undirected graph
+can implement these reads.
+
+All finite computations between rounds are free in this model.
+In particular, finite searches used below are not claimed to be
+computationally efficient. Uniformity means that one finite program,
+given \(d\) and \(M\), performs the stated constructions and terminates
+on every legal input; no family of graph-dependent advice is supplied.
+All vertices use common phase lengths determined by these parameters.
+
+All logarithms without a subscript are base two; \(\ln\) denotes the
+natural logarithm. For \(x\geq1\), \(\logstar x\) is the least number
+of iterations of the base-two logarithm needed to reach a value
+at most \(1\).
+
+\begin{theorem}
+\label{thm:main}
+Under the preceding conventions, suppose that
+\[
+ |\Lin(v)|\geq d(d+1)\qquad\text{for every }v\in V.
+\]
+There is a uniform deterministic forward-information algorithm that
+computes a coloring \(\varphi\) satisfying
+\[
+ \varphi(v)\in\Lin(v)\quad(v\in V),\qquad
+ \varphi(v)\neq\varphi(u)\quad(v\to u)
+\]
+in \(O(\logstar M+d^2)\) rounds, with absolute constants.
+The round bound is independent of the color-name universe.
+If \(n=|V|\) and \(M\leq\max\{2,n\}^{C}\) for a fixed constant \(C\),
+the bound is \(O(\logstar n+d^2)\).
+\end{theorem}
+
+The restriction \(d\geq2\) is necessary for this formula: a cyclically
+oriented triangle has outdegree one and has no proper coloring from
+the common two-element list.
+
+We first prove the list-coloring stage from a proper ordered coloring,
+then construct that ordered coloring from the identifiers.
+A \emph{proper ordered coloring} is a map
+\(\lambda:V\to[K]\) such that
+\(\lambda(v)\neq\lambda(u)\) on every edge.
+The order on \([K]\) schedules vertices; it imposes no monotonicity on
+the supplied edge directions.
+
+\begin{proposition}
+\label{prop:liststage}
+Suppose a proper ordered coloring \(\lambda:V\to[K]\) and the common
+bound \(K\geq1\) are already available. Under the list-size and
+outdegree assumptions of Theorem~\ref{thm:main}, a deterministic
+forward-information algorithm computes a proper list coloring in
+at most \(2K+4\) additional rounds.
+\end{proposition}
+
+\section{The list-coloring stage}
+\label{sec:liststage}
+
+\subsection{Canonical prefixes and exceptional vertices}
+
+Fix \(d\geq2\) and put \(k=d(d+1)\). For a finite ordered set \(S\)
+and an integer \(r\) with \(0\leq r\leq|S|\), let
+\(\first_r(S)\) denote its \(r\) least elements. Retain
+\[
+ L(v)=\first_k(\Lin(v)),
+ \qquad |L(v)|=k.
+\]
+Every set and count in the setup below is defined from these lists,
+the orientation, and \(\lambda\), before either sweep starts.
+
+Let
+\[
+ \full=\{f:|\Nout(f)|=d
+       \text{ and }\lambda(u)>\lambda(f)
+       \text{ for every }u\in\Nout(f)\}.
+\]
+For \(f\in\full\), define its canonical prefix
+\begin{equation}
+ B(f)=\first_{d+1}(L(f))
+     =\first_{d+1}(\Lin(f)).
+ \label{eq:prefix}
+\end{equation}
+The second equality holds because truncation retained the least
+\(k\geq d+1\) elements.
+
+A vertex \(e\) is \emph{exceptional} if it has exactly \(d\) outgoing
+neighbors, all of them have smaller rank than \(e\), all of them
+belong to \(\full\), and
+\begin{equation}
+ L(e)=\bigsqcup_{f\in\Nout(e)} B(f).
+ \label{eq:partition}
+\end{equation}
+Here the disjoint-union notation requires the \(d\) prefixes to be
+pairwise disjoint. Write \(\exc\) for the exceptional set and
+\(\normal=V\setminus\exc\) for the set of normal vertices.
+
+\begin{lemma}
+\label{lem:independent}
+The sets \(\exc\) and \(\full\) are disjoint, every outgoing
+neighbor of an exceptional vertex is normal, and \(\exc\) is an
+independent set in the underlying undirected graph.
+\end{lemma}
+\begin{proof}
+A vertex of \(\full\) has \(d\) outgoing neighbors of larger rank,
+whereas a vertex of \(\exc\) has \(d\) outgoing neighbors of smaller
+rank. Since \(d>0\), it cannot have both properties. Every outgoing
+neighbor of a vertex of \(\exc\) belongs to \(\full\), hence does
+not belong to \(\exc\). Therefore no directed edge has both endpoints
+in \(\exc\); every underlying edge has a direction, so the set is
+independent.
+\end{proof}
+
+A vertex in \(\full\) may have outgoing neighbors in \(\exc\).
+In that event, deletions made below may change its eventual candidate
+set. The proof will identify that candidate set with \(B(f)\) only
+under an additional equality condition. Membership in \(\exc\)
+does not assert that a later sweep would actually fail there.
+
+\subsection{Two reserved colors insulated from full input lists}
+
+\begin{lemma}[Prefix isolation]
+\label{lem:isolation}
+For every \(e\in\exc\), one can deterministically choose a
+distinguished outgoing neighbor \(f(e)\) and a two-element set
+\(P(e)\) such that
+\begin{equation}
+ \begin{split}
+ P(e)&\subseteq L(e)\cap B(f(e)),\\
+ P(e)\cap\Lin(g)&=\varnothing
+ \quad\text{for every }g\in\Nout(e)\setminus\{f(e)\}.
+ \end{split}
+ \label{eq:isolation}
+\end{equation}
+The choice uses only \(e\)'s list, its outgoing prefixes, and its
+local port order.
+\end{lemma}
+\begin{proof}
+Let \(Q(e)=\first_{d+1}(L(e))\).
+The \(d\) disjoint prefixes in~\eqref{eq:partition} partition \(L(e)\).
+Since \(Q(e)\) has \(d+1\) elements, at least one of these prefixes
+contains at least two elements of \(Q(e)\). Among these eligible
+neighbors, let \(f(e)\) be the one on the least local outgoing port.
+Let \(P(e)\) consist of the two least elements of
+\(Q(e)\cap B(f(e))\). This proves the first inclusion.
+
+Fix any other outgoing neighbor \(g\), and put \(q=\max Q(e)\).
+Since \(q\) is the \((d+1)\)st least element of \(L(e)\), every
+\((d+1)\)-element subset of \(L(e)\) has maximum at least \(q\).
+In particular,
+\[
+ q\leq\max B(g).
+\]
+For \(x\in P(e)\), we have \(x\leq q\), and disjointness of the
+prefixes gives \(x\notin B(g)\).
+On the other hand, \eqref{eq:prefix} implies that every element of
+\(\Lin(g)\setminus B(g)\) is strictly larger than \(\max B(g)\).
+Thus \(x\) belongs neither to \(B(g)\) nor to its complement within
+\(\Lin(g)\), proving \(x\notin\Lin(g)\).
+\end{proof}
+
+Consequently, once the outgoing neighbors of \(e\) have chosen
+arbitrary colors from their own input lists, all but \(f(e)\) avoid
+both colors in \(P(e)\). The single color of \(f(e)\) can rule out
+at most one of them. This guarantee survives any changes to those
+neighbors' candidate sets. Computing the pair requires reading
+only the canonical prefixes; the full-list exclusion is a proved
+property of the unread list tails.
+
+\subsection{Deleting reserved pairs and choosing candidate sets}
+
+For a normal vertex \(v\), partition its outgoing neighbors into
+exceptional neighbors, lower-ranked normal neighbors, and
+higher-ranked normal neighbors. Let their respective numbers be
+\begin{equation}
+\begin{split}
+ t(v)&=|\Nout(v)\cap\exc|,\\
+ a(v)&=|\{u\in\Nout(v)\cap\normal:\lambda(u)<\lambda(v)\}|,\\
+ b(v)&=|\{u\in\Nout(v)\cap\normal:\lambda(u)>\lambda(v)\}|.
+\end{split}
+\label{eq:counts}
+\end{equation}
+Properness of \(\lambda\) implies that these are all the possibilities,
+and hence
+\begin{equation}
+ a(v)+b(v)+t(v)=\outdeg(v)\leq d.
+ \label{eq:budget}
+\end{equation}
+Delete the reserved pairs of outgoing exceptional neighbors:
+\begin{equation}
+ L'(v)=L(v)\setminus
+           \bigcup_{e\in\Nout(v)\cap\exc}P(e).
+ \label{eq:deleted}
+\end{equation}
+Overlaps among the deleted pairs can only help, so
+\begin{equation}
+ |L'(v)|\geq d(d+1)-2t(v).
+ \label{eq:deletionbound}
+\end{equation}
+
+The increasing sweep processes rank classes \(1,2,\ldots,K\).
+Vertices in the same class act simultaneously. A normal vertex \(v\)
+chooses the candidate set, or \emph{advertisement},
+\begin{equation}
+ A(v)=\first_{b(v)+1}
+ \left(
+ L'(v)\setminus
+ \bigcup_{\substack{u\in\Nout(v)\cap\normal\\
+                   \lambda(u)<\lambda(v)}} A(u)
+ \right).
+ \label{eq:advertisement}
+\end{equation}
+Only advertisements already constructed at smaller ranks occur on
+the right. Exceptional vertices do nothing during this sweep.
+
+\begin{lemma}
+\label{lem:availability}
+Every choice in~\eqref{eq:advertisement} is possible.
+In particular, \(|A(v)|=b(v)+1\leq d+1\) for every normal vertex.
+\end{lemma}
+\begin{proof}
+Induct on the processed rank classes. Suppose all required
+lower-ranked advertisements have been constructed with the stated
+sizes. Fix a vertex \(v\) in the current class, and abbreviate
+\(a=a(v)\), \(b=b(v)\), and \(t=t(v)\).
+By~\eqref{eq:deletionbound} and the induction hypothesis, the
+number of available elements in~\eqref{eq:advertisement} is at least
+\begin{equation}
+ d(d+1)-2t-a(d+1).
+ \label{eq:availablebound}
+\end{equation}
+
+First suppose \(t\geq1\). Using \(a\leq d-b-t\), the difference
+between~\eqref{eq:availablebound} and the required \(b+1\) is at least
+\[
+\begin{split}
+ d(d+1)-2t-(d-b-t)(d+1)-(b+1)
+   &=db+(d-1)t-1\\
+   &\geq0,
+\end{split}
+\]
+where the last inequality uses \(d\geq2\).
+This includes the tight case \(d=2\), \(t=1\), \(a=1\), \(b=0\).
+
+Next suppose \(t=0\) and \(a\leq d-1\). Put \(s=d-a\geq1\).
+The lower bound~\eqref{eq:availablebound} is \(s(d+1)\).
+Since \(b\leq s\) and \(s(d+1)\geq s+1\), there are at least \(b+1\)
+available elements.
+
+The only remaining case is \(t=0\) and \(a=d\).
+Equation~\eqref{eq:budget} forces \(b=0\), so only one element is
+needed. Suppose for a contradiction that none is available.
+Since \(t=0\), we have \(L'(v)=L(v)\). The \(d\) lower outgoing
+advertisements then cover \(L(v)\), giving
+\begin{equation}
+ d(d+1)=|L(v)|
+ \leq
+ \left|\bigcup_{u\in\Nout(v)}A(u)\right|
+ \leq
+ \sum_{u\in\Nout(v)}|A(u)|
+ \leq d(d+1).
+ \label{eq:saturation}
+\end{equation}
+Every inequality is an equality. The union contains \(L(v)\)
+and has the same cardinality, so it equals \(L(v)\).
+The sum of advertisement sizes is \(d(d+1)\), so every one of
+the \(d\) advertisements has size \(d+1\).
+Equality between union size and the sum of sizes
+says that they are pairwise disjoint. Thus they partition \(L(v)\).
+
+For each such neighbor \(u\), the already proved identity
+\(|A(u)|=b(u)+1=d+1\) implies \(b(u)=d\).
+Applying~\eqref{eq:budget} at \(u\) gives \(a(u)=t(u)=0\).
+Consequently \(u\) has exactly \(d\) outgoing neighbors, all normal
+and of larger rank; in particular \(u\in\full\).
+No pair was deleted from \(L(u)\), and no smaller-ranked
+advertisement was excluded at \(u\).
+The stipulated least-element rule in~\eqref{eq:advertisement}
+therefore gives
+\[
+ A(u)=\first_{d+1}(L(u))=B(u).
+\]
+We have proved that \(v\) has \(d\) smaller-ranked outgoing
+neighbors in \(\full\) whose canonical prefixes partition \(L(v)\).
+These are precisely the conditions defining \(\exc\).
+This contradicts \(v\in\normal\).
+The putative failure is impossible, and the induction is complete.
+\end{proof}
+
+The use of \emph{higher normal} neighbors in \(b(v)\), and the
+canonical least-element choice in the increasing sweep, are both
+needed in the equality argument. There is no assertion that an
+arbitrary vertex of \(\full\) keeps its canonical prefix.
+
+\subsection{The decreasing sweep and exceptional completion}
+
+Process normal vertices in rank order \(K,K-1,\ldots,1\).
+At \(v\), choose the least color in
+\begin{equation}
+ A(v)\setminus
+ \{\varphi(u):u\in\Nout(v)\cap\normal,\
+                    \lambda(u)>\lambda(v)\}.
+ \label{eq:normalcolor}
+\end{equation}
+There are \(b(v)\) higher-ranked normal outgoing neighbors and
+\(|A(v)|=b(v)+1\), so the choice is possible.
+
+After this sweep, all normal vertices have final colors.
+For each exceptional vertex \(e\), simultaneously set
+\begin{equation}
+ \varphi(e)=\min\bigl(P(e)\setminus\{\varphi(f(e))\}\bigr).
+ \label{eq:exceptioncolor}
+\end{equation}
+Lemma~\ref{lem:independent} guarantees that \(f(e)\) is normal,
+so its color is already defined. A single color cannot exhaust the
+two-element set \(P(e)\).
+
+\begin{lemma}
+\label{lem:correctness}
+The resulting \(\varphi\) is a proper coloring and
+\(\varphi(v)\in\Lin(v)\) at every vertex.
+\end{lemma}
+\begin{proof}
+For a normal vertex, the construction gives
+\[
+ \varphi(v)\in A(v)\subseteq L'(v)\subseteq L(v)\subseteq\Lin(v).
+\]
+For an exceptional vertex, it gives
+\(\varphi(e)\in P(e)\subseteq L(e)\subseteq\Lin(e)\).
+It remains to verify every directed edge \(v\to u\).
+
+If \(v,u\in\normal\) and \(\lambda(u)<\lambda(v)\), the increasing
+sweep chose \(A(v)\) disjoint from \(A(u)\), so their final colors
+differ. If \(v,u\in\normal\) and \(\lambda(u)>\lambda(v)\),
+the decreasing choice at \(v\) explicitly excluded \(\varphi(u)\).
+There is no equal-rank case.
+
+If \(v\in\normal\) and \(u\in\exc\), then
+\(A(v)\subseteq L'(v)\) is disjoint from \(P(u)\) by~\eqref{eq:deleted}.
+Since \(\varphi(u)\in P(u)\), the edge is proper.
+
+If \(v\in\exc\) and \(u\in\normal\), the choice
+in~\eqref{eq:exceptioncolor} excludes \(\varphi(u)\) when \(u=f(v)\).
+Otherwise Lemma~\ref{lem:isolation} gives
+\(P(v)\cap\Lin(u)=\varnothing\), whereas
+\(\varphi(u)\in\Lin(u)\) and \(\varphi(v)\in P(v)\).
+Again the colors differ.
+
+There are no edges with both endpoints exceptional, by
+Lemma~\ref{lem:independent}. These cases cover every underlying edge.
+\end{proof}
+
+\subsection{Communication schedule}
+\label{sec:schedule}
+
+Here is a complete schedule under the read-previous-state convention
+of Section~\ref{sec:model}. Vertices retain any state needed in later
+rounds.
+\begin{enumerate}
+ \item In the first setup round, each vertex reads its outgoing
+ neighbors' ranks and determines membership in \(\full\).
+ If it belongs to \(\full\), it computes its canonical prefix locally.
+ \item In the second round, it reads its outgoing neighbors'
+ membership in \(\full\), together with the prefixes of those in
+ \(\full\). It can now test
+ membership in \(\exc\); if exceptional, it chooses \(f(e)\)
+ and \(P(e)\).
+ \item In the third round, it reads its outgoing neighbors'
+ exceptional flags, together with the pairs of those in \(\exc\).
+ Every normal vertex can
+ now determine \(a(v),b(v),t(v)\) and \(L'(v)\).
+ \item Allocate \(K\) rounds to the increasing sweep, one per
+ rank class. At its scheduled round a vertex reads the stored
+ advertisements of its smaller-ranked outgoing normal neighbors.
+ \item Allocate \(K\) rounds to the decreasing sweep.
+ At its scheduled round a vertex reads the final colors of its
+ higher-ranked outgoing normal neighbors.
+ \item One final round gives each exceptional vertex its
+ distinguished outgoing neighbor's final color, allowing
+ \eqref{eq:exceptioncolor}.
+\end{enumerate}
+The total is \(3+K+K+1=2K+4\) rounds.
+Adjacent vertices have different ranks, and every dependency in
+each sweep points to a rank class already processed in that sweep.
+This remains true on directed cycles. No distinguished neighbor
+needs to learn which incoming vertices selected it.
+All communicated objects are finite and every operation is
+deterministic, using ordered lists or local port order to break ties.
+Together with Lemmas~\ref{lem:availability} and~\ref{lem:correctness},
+this proves Proposition~\ref{prop:liststage}.
+
+\section{Self-contained construction of the ordered coloring}
+\label{sec:preprocessing}
+
+We now supply the preprocessing needed for the main theorem.
+The separating-set transformation is Linial's color-reduction
+method~\cite[Section~4]{Linial92}; the polynomial sets used in its
+last step come from Erd\H{o}s, Frankl, and F\"uredi~\cite[Example~3.2]{EFF85}.
+We prove the required properties here, including a round bound
+uniform in \(d\), and specify finite deterministic searches so that
+no nonuniform advice is required. These computations use identifiers
+and temporary labels, not the input list colors.
+
+\begin{proposition}
+\label{prop:preprocessing}
+From identifiers in the common namespace \([M]\), one can compute
+a proper ordered coloring \(\lambda:V\to[K]\) with
+\[
+ K<256(d+1)^2
+\]
+in at most \(2\logstar M+3\) forward-information rounds.
+\end{proposition}
+
+\subsection{A separating family and one-round reduction}
+
+Put \(u=d+1\) and \(A=8u^2\). For any integer \(h\geq2\), let
+\[
+ m=A\lceil\log h\rceil.
+\]
+We claim that there are sets \(S_1,\ldots,S_h\subseteq[m]\) such that
+\begin{equation}
+ S_i\setminus\bigcup_{j\in J}S_j\neq\varnothing
+ \quad\text{whenever }i\in[h],\
+ J\subseteq[h]\setminus\{i\},\ |J|\leq d.
+ \label{eq:separating}
+\end{equation}
+
+To prove existence, independently include each point in each set
+with probability \(1/u\). For a fixed pair \((i,J)\), a given point
+belongs to \(S_i\) and to none of the sets indexed by \(J\) with
+probability at least
+\[
+ \frac1u\left(1-\frac1u\right)^d
+ =\frac1u\left(1+\frac1d\right)^{-d}
+ \geq\frac1{eu}.
+\]
+The last inequality follows from \(\ln(1+x)\leq x\) for \(x\geq0\).
+Independence across points and \(1-z\leq e^{-z}\) imply that
+the probability that this pair has no witness is at most
+\begin{equation}
+ \exp\!\left(-\frac{m}{eu}\right)
+ \leq \exp(-2u\ln h)=h^{-2u}.
+ \label{eq:failureprobability}
+\end{equation}
+Indeed, \(m/(eu)=(8/e)u\lceil\log h\rceil\geq2u\ln h\),
+using \(e<3\) and \(\log h\geq\ln h\).
+
+There are at most \(h^{d+1}=h^u\) pairs \((i,J)\).
+For fixed \(i\), encode \(J\) by its increasing list of elements,
+followed by copies of \(i\) until the sequence has length \(d\).
+This is an injection into \([h]^d\), since \(i\notin J\).
+The union bound and~\eqref{eq:failureprobability} put the probability
+of any failed pair at most \(h^{-u}<1\). A family
+satisfying~\eqref{eq:separating} therefore exists.
+
+To select a common family deterministically, order all \(h\)-tuples
+of subsets of \([m]\) lexicographically by their incidence bit
+strings. Enumerate them until all the finitely many conditions
+in~\eqref{eq:separating} hold. The existence proof guarantees
+termination, and the common parameters guarantee that every vertex
+finds the same family.
+
+Suppose the current proper coloring has labels in \([h]\).
+A vertex of label \(i\) reads its outgoing neighbors' labels in
+one round and chooses the least element of
+\begin{equation}
+ S_i\setminus
+ \bigcup_{w\in\Nout(v)}S_{\mathrm{old}(w)}.
+ \label{eq:onestep}
+\end{equation}
+Neighbor labels differ from \(i\); repeated labels at different
+neighbors cause no problem because there are at most \(d\) distinct
+ones. The choice is possible by~\eqref{eq:separating}.
+For an edge \(v\to w\), the new label of \(v\) is outside
+\(S_{\mathrm{old}(w)}\), whereas the new label of \(w\) belongs to
+that set. Hence the new coloring is proper and has palette \([m]\).
+
+\subsection{Bounding the number of reductions uniformly}
+
+Let
+\begin{equation}
+ H_0=16A\lceil\log(4A)\rceil,\qquad
+ f(x)=A\lceil\log x\rceil\quad(x\geq2).
+ \label{eq:threshold}
+\end{equation}
+Starting with the identifier bound \(h=M\), apply the one-round
+reduction while \(h>H_0\), replacing the common bound by \(f(h)\).
+If \(M=1\) or already \(M\leq H_0\), no such round is necessary.
+In the former case, distinct identifiers imply that there is at most
+one vertex. In every case the current proper labels can be viewed
+as elements of \([H_0]\) once the loop has ended.
+
+For completeness, we prove that the loop takes at most
+\(2\logstar M+2\) rounds, with constants independent of \(d\).
+Set
+\[
+ T=(4A)^4.
+\]
+For \(x\geq2^T\), write \(y=\log x\geq T\).
+As \(\lceil y\rceil\leq2y\) for \(y\geq1\), monotonicity gives
+\begin{equation}
+ f(f(x))
+ \leq A\bigl(\log(2Ay)+1\bigr)
+ \leq y=\log x.
+ \label{eq:tworeductions}
+\end{equation}
+Here is an explicit verification of the second inequality.
+For \(y\geq T\), the function
+\[
+ g(y)=y-A\bigl(\log(2Ay)+1\bigr)
+\]
+has derivative \(g'(y)=1-A/(y\ln2)>0\).
+Moreover,
+\[
+\begin{split}
+ A\bigl(\log(2AT)+1\bigr)
+ &=A\bigl(\log(2A)+4\log(4A)+1\bigr)\\
+ &\leq18A^2+A
+ <256A^4=T,
+\end{split}
+\]
+where \(\log z\leq z\) for \(z\geq1\), and \(A\geq32\).
+Thus \(g(T)>0\), proving~\eqref{eq:tworeductions}.
+
+As long as a pair of rounds starts with bound at least \(2^T\),
+either the loop stops during that pair, or its new bound is at
+most the logarithm of the bound at the start of the pair.
+More explicitly, let \(x_j\) be the bound after \(2j\) executed
+rounds. If the first \(j+1\) pairs are executed and each starts
+with bound at least \(2^T\), then \(x_{j+1}\leq\log x_j\);
+induction gives
+\(x_j\leq\log^{(j)}M\), where \(\log^{(j)}\) denotes \(j\)
+successive logarithms. Thus after at most \(\logstar M\) pairs
+the loop has stopped or its bound has dropped below \(2^T\);
+otherwise its bound would eventually be at most \(1\).
+
+Once the bound is below \(2^T\), at most two more rounds are needed.
+Indeed, by monotonicity the first new bound is at most
+\(f(2^T)=AT\), and the second is at most
+\[
+\begin{split}
+ f(AT)
+ &\leq A\bigl(\log(AT)+1\bigr)\\
+ &\leq 6A\log(4A)
+ <16A\lceil\log(4A)\rceil=H_0.
+\end{split}
+\]
+The middle inequality follows from
+\(\log(AT)=\log A+4\log(4A)\leq5\log(4A)\) and
+\(\log(4A)\geq1\). The loop stops earlier if it reaches \(H_0\)
+at an intermediate round. This proves the claimed bound.
+
+\subsection{A final polynomial reduction to a quadratic palette}
+
+Choose \(q\) to be the smallest power of two at least \(8u\), so
+\begin{equation}
+ 8u\leq q<16u.
+ \label{eq:q}
+\end{equation}
+We use the polynomial graph construction of
+Erd\H{o}s, Frankl, and F\"uredi~\cite[Example~3.2]{EFF85},
+as in Linial's color reduction~\cite[Lemma~4.2]{Linial92}.
+
+We will need a field \(\mathbb F\) of order \(q\).
+We recall its existence explicitly. Write \(q=2^r\).
+Over the two-element field, form a splitting field of \(X^q-X\).
+Such a field can be constructed by repeatedly adjoining a root of
+an irreducible factor of degree at least two until all factors
+are linear: the quotient of a polynomial ring over a
+field by an irreducible polynomial is a field, because the Euclidean
+algorithm supplies an inverse modulo that polynomial for every
+nonzero residue class. At each step a further factor becomes linear,
+so a finite succession of such extensions suffices.
+
+The derivative of \(X^q-X\) in characteristic two is \(-1\), so
+in its splitting field the polynomial has exactly \(q\) distinct
+roots. These roots form a field: they contain \(0\) and \(1\), and
+are closed under addition and multiplication because repeated
+squaring gives \((a+b)^q=a^q+b^q\) and
+\((ab)^q=a^qb^q\). Additive inverses cause no problem in
+characteristic two. For a nonzero root \(a\), the identity
+\((a^{-1})^q=(a^q)^{-1}=a^{-1}\) gives closure under inverses.
+Thus their set is a field with exactly \(q\) elements.
+
+For a uniform common representation, enumerate pairs of binary
+operation tables on the ordered set \([q]\), with prescribed
+distinct labels for \(0\) and \(1\), and choose the first pair
+satisfying the field axioms. This finite search terminates by the
+existence argument. Field elements are ordered by their labels;
+this is merely an order for deterministic choices, not an order
+compatible with field arithmetic.
+
+There are \(q^3\) polynomials of degree at most two over this field,
+indexed by their triples of coefficients. This is enough to
+assign a distinct polynomial \(P_i\) to every temporary color
+\(i\in[H_0]\). To check this, for integer \(u\geq2\) the inequality
+\(u\leq2^{u-1}\) follows by induction, and hence
+\[
+ \left\lceil\log(32u^2)\right\rceil
+ \leq 2u+3\leq4u.
+\]
+Since \(A=8u^2\), we obtain
+\begin{equation}
+ H_0
+ =128u^2\left\lceil\log(32u^2)\right\rceil
+ \leq512u^3
+ \leq q^3.
+ \label{eq:polynomialcount}
+\end{equation}
+Use coefficient lexicographic order to make the assignment common
+and deterministic.
+
+For each \(i\in[H_0]\), put
+\[
+ H_i=\{(a,P_i(a)):a\in\mathbb F\}\subseteq\mathbb F^2.
+\]
+Each \(H_i\) has \(q\) elements. Distinct \(H_i,H_j\) intersect in
+at most two points, because \(P_i-P_j\) is a nonzero polynomial of
+degree at most two. The root bound used here follows by division
+by \(X-a\): a root \(a\) gives a factor \(X-a\), and induction on
+degree bounds the number of distinct roots by the degree.
+
+At most \(d\) outgoing neighbors can therefore cover at most
+\(2d<q\) points of a vertex's own set \(H_i\).
+In one more round, a vertex of temporary color \(i\) chooses the
+least pair in its \(H_i\) outside the sets corresponding to its
+outgoing neighbors. This is precisely the transformation
+in~\eqref{eq:onestep} with the \(H_i\) in place of the \(S_i\),
+so its correctness proof applies verbatim.
+Order \(\mathbb F^2\) lexicographically by the common field labels
+and relabel its elements by \([q^2]\).
+The result is a proper ordered coloring with
+\[
+ K=q^2<256u^2=256(d+1)^2.
+\]
+The previous loop took at most \(2\logstar M+2\) rounds, and this
+last reduction takes one. This proves
+Proposition~\ref{prop:preprocessing}.
+
+\section{Proof of the main theorem}
+
+Run Proposition~\ref{prop:preprocessing}, then apply the algorithm
+of Proposition~\ref{prop:liststage} using its output ranks.
+The list stage preserves membership in the actual input lists
+and separates every edge, by Lemma~\ref{lem:correctness}.
+Its composition with preprocessing takes at most
+\[
+ (2\logstar M+3)+(2K+4)
+ <2\logstar M+512(d+1)^2+7
+ =O(\logstar M+d^2)
+\]
+rounds. Under a polynomial identifier bound with fixed exponent,
+\(\logstar M=O(\logstar n+1)\), giving the stated bound in \(n\).
+
+All searches in preprocessing have finite domains, explicitly
+testable conditions, and proved existence of a successful object.
+All other choices are least elements of proved nonempty finite
+sets, with local port order resolving the distinguished-neighbor
+choice. The common parameters determine every phase length.
+These facts give one terminating deterministic program for all
+values of \(d\) and \(M\).
+
+Every communication step reads only outgoing-neighbor states.
+The algorithm uses no incoming-degree bound and no acyclicity
+assumption. In the list stage it compares and transmits only
+finitely many input names and their subsets; it never enumerates
+a global color universe. Longer representations can increase
+message size and local computation, which the stated model does
+not charge as rounds. This completes the proof of
+Theorem~\ref{thm:main}.
+\qed
+
+\begin{thebibliography}{9}
+
+\bibitem{BE09}
+Leonid Barenboim and Michael Elkin.
+\newblock Distributed \((\Delta+1)\)-coloring in linear (in \(\Delta\)) time.
+\newblock In \emph{Proceedings of the 41st Annual ACM Symposium on
+Theory of Computing (STOC)}, pages 111--120, 2009.
+\newblock \href{https://doi.org/10.1145/1536414.1536432}
+{doi:10.1145/1536414.1536432}.
+
+\bibitem{EFF85}
+Paul Erd\H{o}s, Peter Frankl, and Zolt\'an F\"uredi.
+\newblock Families of finite sets in which no set is covered by the
+union of \(r\) others.
+\newblock \emph{Israel Journal of Mathematics}, 51(1--2):79--89, 1985.
+\newblock \href{https://doi.org/10.1007/BF02772959}
+{doi:10.1007/BF02772959}.
+
+\bibitem{FK24}
+Marc Fuchs and Fabian Kuhn.
+\newblock Simpler and more general distributed coloring based on simple
+list defective coloring algorithms.
+\newblock \href{https://arxiv.org/abs/2405.04648v1}
+{arXiv:2405.04648v1}, 2024.
+\newblock A brief announcement appeared as
+\emph{Brief Announcement: Simpler and More General Distributed Coloring
+Based on Simple List Defective Coloring Algorithms},
+in \emph{Proceedings of the 43rd ACM Symposium on Principles of Distributed
+Computing (PODC)}, pages 425--428, 2024.
+\newblock \href{https://doi.org/10.1145/3662158.3662808}
+{doi:10.1145/3662158.3662808}.
+\newblock The theorem cited in this note is from the full preprint.
+
+\bibitem{FK26}
+Marc Fuchs and Fabian Kuhn.
+\newblock Greedy-like defective coloring: Distributed algorithms and
+applications.
+\newblock \href{https://arxiv.org/abs/2608.02386v2}
+{arXiv:2608.02386v2}, 10 September 2026.
+\newblock \href{https://doi.org/10.48550/arXiv.2608.02386}
+{doi:10.48550/arXiv.2608.02386}.
+
+\bibitem{Linial92}
+Nathan Linial.
+\newblock Locality in distributed graph algorithms.
+\newblock \emph{SIAM Journal on Computing}, 21(1):193--201, 1992.
+\newblock \href{https://doi.org/10.1137/0221015}
+{doi:10.1137/0221015}.
+
+\end{thebibliography}
+\end{document}

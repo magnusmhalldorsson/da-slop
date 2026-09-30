@@ -1,5 +1,7 @@
 # Color reduction for edge coloring
 
+(Notes by Jukka Suomela)
+
 ## Notation
 
 $d$ = degree, $r \ge 2$ is a free parameter.

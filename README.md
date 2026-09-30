@@ -25,7 +25,7 @@ This hopefully also levels the playing field: you do not need to have the latest
 For contributions in this repository, there has to be some reason to believe that the result is indeed correct, beyond "a chatbot said so". For each result, we use these symbols:
 
 - **H**: there is some ***human understanding*** of the result (for example, a human researcher understood the algorithm idea and it makes sense and sounds convincing).
-- **F**: there is some (possibly AI-generated) ***formalization*** of the result, e.g., a formalization in Lean 4, using sensible working principles similar to those required by the [Palomar Registry](https://palomar-registry.org).
+- **F**: there is some (possibly AI-generated, possibly hand-crafted) ***formalization*** of the result. This could be at minimum a vibe-formalization in Lean 4, using sensible working principles similar to those required by the [Palomar Registry](https://palomar-registry.org).
 
 Formalizations do not need to be made available, as long as the human researcher who communicated the result is convinced that the formalization makes sense.
 

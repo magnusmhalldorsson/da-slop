@@ -10,7 +10,7 @@ $b = \lfloor d/2 \rfloor + 1$ bits suffice. For $d = 3$ we can have $b = 2$.
 
 ## Prior work
 
-$b = \lceil d+1 \rceil + 1$ bits suffice. For $d = 3$ we can trivially have $b = 3$, but whether $b = 2$ suffices is open. See [Balliu, Brandt, Kuhn, Nowicki, Olivetti, Rotenberg, Suomela, DISC 2025](https://arxiv.org/abs/2405.04519).
+$b = \lceil d/2 \rceil + 1$ bits suffice. For $d = 3$ we can trivially have $b = 3$, but whether $b = 2$ suffices was left open by that work. See [Balliu, Brandt, Kuhn, Nowicki, Olivetti, Rotenberg, Suomela, DISC 2025](https://arxiv.org/abs/2405.04519).
 
 ## Documents
 

@@ -4,9 +4,9 @@
 
 Distributed graph algorithms; LOCAL model, quantum-LOCAL model and non-signaling model.
 
-Graph family: $d$-dimensional grids.
+Task: $c$ coloring, for a constant $c \ge 4$.
 
-Task: $c$ coloring, for $c \ge 4$.
+Graph family: $d$-dimensional grids.
 
 ## Highlight results
 
@@ -22,6 +22,10 @@ There is an algorithm with locality $2^{O(d^2)}$; see [Brandt, Hirvonen, Korhone
 ## Discovered by
 
 GPT-6 in Codex
+
+## Documents
+
+- [AI-generated write-up](writeup.pdf)
 
 ## Communicated by
 

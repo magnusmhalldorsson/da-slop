@@ -6,7 +6,7 @@ We have a $d$-regular graph $G = (V,E)$, each node stores $b$ bits, and we can d
 
 ## New result
 
-$b = \lfloor d+1 \rfloor + 1$ bits suffice. For $d = 3$ we can have $b = 2$.
+$b = \lfloor d/2 \rfloor + 1$ bits suffice. For $d = 3$ we can have $b = 2$.
 
 ## Prior work
 

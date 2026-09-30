@@ -23,18 +23,22 @@ The strongest result from prior work is $\log^{O(1)} \Delta + \log^* n$ rounds (
 
 ## Discovered by
 
-- GPT-6 in Codex
+GPT-6 in Codex
 
 ## Communicated by
 
-- [Jukka Suomela](https://jukkasuomela.fi)
+[Jukka Suomela](https://jukkasuomela.fi)
 
 ## Confidence
 
 The algorithm idea is simple and elegant and makes a lot of sense to me. It uses only elementary mathematical ingredients and could be easily presented in a lecture to students.
 
-The result has also been formalized in Lean 4 in Palomar style.
+The result has also been vibe-formalized in Lean 4 in Palomar style.
+
+## Thanks
+
+Thanks especially to Alkida Balliu, Sebastian Brandt, Fabian Kuhn, Yannic Maus, and Dennis Olivetti for discussions.
 
 ## Assigned to
 
-- [Yannic Maus](https://academia.yannicmaus.de)
+[Yannic Maus](https://academia.yannicmaus.de)

@@ -2,7 +2,7 @@
 
 ## Context
 
-We have a $d$-regular graph $G = (V,E)$, each node stores $b$ bits, and we can design an $O(1)$-round algorithm that uses these bits to recover a subset of edges $X \subseteq E$.
+Fix a $d$. We have a $d$-regular graph $G = (V,E)$, each node stores $b$ bits, and we can design an $O(1)$-round algorithm $A$ that uses these bits to recover a subset of edges $X \subseteq E$. What is the smallest $b$ such that there exists an $A$ that can be used to recover any given subset $X$?
 
 ## New result
 

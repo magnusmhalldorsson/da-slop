@@ -40,7 +40,7 @@ and the claim follows from $e < 3$.
 
 Suppose we pick the $4r$-element subset $N(c)$ with a process where we keep selecting uniformly random elements of $K$ until we have $4r$ distinct elements. Then for $N(c)$ to be fully contained inside $Y$, it certainly has to be the case that our first $4r$ trials fall inside $Y$. So for a fixed $Y$, the probability that a randomly-chosen $N(c)$ indeed fits inside $Y$ is at most $$\left(\frac{3rA}{512rd}\right)^{4r} = \left(\frac{3A}{512d}\right)^{4r}.$$
 
-For a fixed $X$, the probability that all $A$ of the sets $N(c)$ fit inside $Y$ is hence at most $$\left(\frac{3A}{512d})^{4rA}.$$
+For a fixed $X$, the probability that all $A$ of the sets $N(c)$ fit inside $Y$ is hence at most $$\left(\frac{3A}{512d}\right)^{4rA}.$$
 
 There are $2^r d \choose A$ possible choices of $X$, and $512rd \choose 3rA$ possible choices of $Y$. So the probability that for some $X$ and $Y$ bad things happen is, by union bound, at most
 

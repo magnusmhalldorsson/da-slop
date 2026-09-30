@@ -15,8 +15,8 @@ This repository aims at serving these purposes:
 1. This is a place where we can ***quickly communicate*** the latest findings.
 2. We ***avoid doing duplicate work*** with AI tools: it is enough that one researcher prompts their chatbot and everyone benefits. Hopefully this will also lead to more sustainable research, both from the financial and environmental perspective.
 3. We can ***coordinate human efforts*** better: this is a place where we can keep track of who is currently working towards a traditional human-understandable exposition of which AI-generated result, to be communicated through our usual publication venues.
-4. We can hopefully do more rapidly ***cumulative research***: this is a public repository, and AI agents can directly browse this repository (or even clone it) and benefit from these known results in future work.
-5. This is also a place where we can keep results that are probably not significant enough to be published, but that serve as ***useful raw data points***: once we have many enough such data points, we can start to analyze the data set (both with and without AI tools), see patterns that emerge, identify interesting outliers, and eventually develop overarching theories that explain these individual results.
+4. We can hopefully do ***cumulative research*** more rapidly: this is a public repository, and AI agents can directly browse this repository (or even clone it) and benefit from these known results in future work.
+5. This is also a place where we can keep results that are probably not significant enough to be published, but that serve as ***useful raw data points***: once we have enough such data points, we can start to analyze the data set (both with and without AI tools), see patterns that emerge, identify interesting outliers, and eventually develop overarching theories that explain these individual results.
 
 This hopefully also levels the playing field: you do not need to have the latest and most expensive AI tools to contribute, as there are already many results that AI tools have discovered that are waiting for humans to study them.
 

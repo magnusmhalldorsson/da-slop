@@ -19,7 +19,7 @@ $b = \lceil d+1 \rceil + 1$ bits suffice. For $d = 3$ we can trivially have $b =
 
 ## Discovered by
 
-The main breakthrough was by GPT-5.6 in Codex; after the initial idea there was some human guidance towards a simpler algorithms.
+The main breakthrough was by GPT-5.6 in Codex; after the initial idea there was some human guidance towards a simpler algorithm.
 
 ## Communicated by
 

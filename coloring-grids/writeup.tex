@@ -1,0 +1,1197 @@
+% Standalone source: latexmk -pdf writeup.tex
+% All proofs, tables, and bibliography entries are contained in this file.
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=27mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,tabularx,array,enumitem}
+\usepackage{xurl}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\hypersetup{pdftitle={The dimension dependence of local grid coloring},pdfauthor={}}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}\newtheorem{remark}[theorem]{Remark}
+\newcommand{\Z}{\mathbb Z}
+\newcommand{\R}{\mathbb R}
+\newcommand{\E}{\mathbb E}
+\newcommand{\Prob}{\mathbb P}
+\newcommand{\dist}{\operatorname{dist}}
+\newcommand{\LOCAL}{\mathsf{LOCAL}}
+\newcommand{\NS}{\mathsf{NS\text{-}LOCAL}}
+\newcommand{\BD}{\mathsf{BD\text{-}LOCAL}}
+\newcommand{\ls}{\log^*}
+\newcommand{\norm}[1]{\lVert#1\rVert}
+\newcommand{\abs}[1]{\lvert#1\rvert}
+\setlength{\emergencystretch}{2em}
+\setlist{itemsep=3pt,topsep=5pt}
+\title{The dimension dependence of local grid coloring}
+\author{}
+\date{30 September 2026}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We study proper vertex coloring of full $d$-dimensional boxes and standard
+tori, treating the dimension as a variable. For every fixed palette
+$c\ge4$, a linear dependence on $d$ is necessary even for non-signaling
+outcomes with constant global success probability, and hence also for
+distributed quantum algorithms with input-independent pre-shared
+entanglement. Conversely, four colors suffice in
+$2^{O(d)}(1+\log^*n)$ deterministic communication rounds, and in
+$2^{O(d)}$ non-signaling locality with exact success or quantum rounds
+with high probability. The upper bounds require no supplied coordinate
+directions. Classical deterministic and private-randomness algorithms
+also have the usual $\Omega_c(\log^*n)$ lower bound, with constants
+uniform in dimension.
+
+The lower bound uses a random cyclic Cayley graph with high chromatic
+number and induced neighborhoods identical to grid neighborhoods.
+The upper bound combines nets at successively doubled scales with
+separated box boundaries. We prove the graph construction, the
+constant-success non-signaling transfer, and the geometric algorithm
+in full. Published non-signaling and quantum symmetry-breaking
+primitives are stated explicitly at their use. The remaining gap is
+linear versus single-exponential dependence on dimension.
+\end{abstract}
+
+{\small\tableofcontents}
+\clearpage
+
+\section{Results and conventions}\label{sec:overview}
+
+For integers $d\ge1$ and $L\ge1$, the inputs are the full box
+$\{0,\ldots,L-1\}^d$ and the standard torus $(\Z/L\Z)^d$, with
+nearest-neighbor edges. Graphs are simple, including for small $L$.
+Write $n=L^d$. The maximum degree is at most $2d$ and, when $L\ge3$,
+the torus is $2d$-regular. A proper $c$-coloring assigns a member of
+$[c]=\{1,\ldots,c\}$ to every vertex and different colors to adjacent
+vertices. The palette $c$ is fixed independently of $d$ and $n$ in
+the asymptotic comparisons below.
+
+\begin{theorem}[Dimension-dependent bounds]\label{thm:main}
+Fix $c\ge4$. On the above grids with
+\begin{equation}\label{eq:large}
+                         L\ge\max\{128,d^2\},
+\end{equation}
+the bounds in Table~\ref{tab:main} hold, uniformly in $d$ and $L$.
+All upper bounds use only four colors and hold for every $L\ge1$.
+The dimension lower bounds hold even when globally consistent signed
+coordinate directions are supplied; the upper bounds also work without
+these directions. The lower bounds apply to boxes, standard tori, and
+tori promised to have even side length.
+\end{theorem}
+
+\begin{table}[htbp]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}lXXl@{}}
+\toprule
+Model & Lower bound & Upper bound & Upper success\\
+\midrule
+Deterministic $\LOCAL$
+ & $\Omega_c(d+\ls n)$ & $2^{O(d)}(1+\ls n)$ & Certain\\
+Private-randomness $\LOCAL$
+ & $\Omega_c(d+\ls n)$ & $2^{O(d)}(1+\ls n)$ & Certain\\
+Quantum $\LOCAL$
+ & $\Omega_c(d)$ & $2^{O(d)}$ & $1-n^{-a}$\\
+Non-signaling $\LOCAL$
+ & $\Omega_c(d)$ & $2^{O(d)}$ & Certain\\
+Bounded-dependence $\LOCAL$
+ & $\Omega_c(d)$ & $2^{O(d)}$ & Certain\\
+\bottomrule
+\end{tabularx}
+\caption{Bounds for a fixed palette $c\ge4$. Randomized-model lower
+bounds require global success at least $2/3$; deterministic lower
+bounds have a harmless additive constant. The quantum upper bound
+holds for each fixed requested $a>0$. The private-randomness upper
+bound is the deterministic algorithm.}
+\label{tab:main}
+\end{table}
+
+Here and throughout, success concerns the \emph{entire} coloring, not
+just a fixed vertex or edge. The dimension lower bound also holds for
+any fixed positive global success probability, and allows shared
+randomness independent of the input topology. The additional
+randomized $\ls n$ lower bound is stated for independent private
+randomness. The factor multiplying $\ls n$ in the deterministic
+upper bound depends exponentially on $d$; an additive
+$2^{O(d)}+O(\ls n)$ bound is not proved here.
+
+\subsection{What the quantitative arguments add}
+
+Four-coloring grids in $O_d(\ls n)$ deterministic rounds is known
+from Brandt et al.~\cite{grid}; the underlying separated-box method
+is closely related to Holroyd--Schramm--Wilson~\cite{HSW}.
+Our upper-bound argument keeps the dependence on $d$ explicit.
+Its key step is to construct a covering net using a sequence of
+auxiliary graphs of degree $2^{O(d)}$, instead of asking for a maximal
+independent set directly in a grid power of degree $2^{\Theta(d^2)}$.
+The separated-box conversion is then reproduced and proved.
+
+Random-Cayley spectral methods are classical; see
+Alon~\cite{Alon}. The lower-bound construction combines their
+chromatic obstruction with the exclusion of short additive relations,
+so that every small induced neighborhood is a signed grid ball.
+The transfer to non-signaling outcomes uses the cheating-graph method
+of Coiteux-Roy et al.~\cite{NScolor}. We give the complete transfer,
+including the amplification to constant global success and the finite
+size bookkeeping. The size-dependent classical lower bounds are due
+to Linial~\cite{Linial} and Naor~\cite{Naor}; the fast initialization
+used for the stronger-model upper bounds is due to
+Akbari et al.~\cite{OnlineQuantum} and
+Flin--Li--Suomela~\cite{QuantumBreak}.
+
+The two main quantities to compare are thus $\Omega_c(d)$ and
+$2^{O(d)}$. The results concern constant palettes and full grid
+geometry. Rectangles with arbitrary aspect ratios, grids with holes,
+and arbitrary subgraphs are outside the geometric upper-bound theorem.
+
+\subsection{Inputs, distances, and computation}
+
+Vertices know $d,L,n$ and whether the promised input is a box or a
+torus. They have distinct identifiers in $[n^C]$ for a fixed known
+constant $C\ge1$; all assignments are permitted. Lower bounds use
+only identifiers in $[n]$. Local computation and message sizes are
+unrestricted. A communication round traverses one nearest-neighbor
+edge. Write $\dist_G$ for this graph distance and $\dist_\infty$ for
+maximum coordinate distance, using cyclic coordinate distances on a
+torus. In these graphs,
+\[
+              \dist_G(u,v)\le d\,\dist_\infty(u,v).
+\]
+Thus an $\ell_\infty$ radius $r$ can require $dr$ communication
+rounds. Constants in $O(\cdot)$ are independent of $d,n$ unless a
+subscript indicates otherwise. The function $\ls$ uses base two and
+stops on reaching a value at most one; $\log$ in explicit analytic
+inequalities is the natural logarithm.
+
+A \emph{frame} labels the incident directions consistently by
+$+e_i,-e_i$, $i\in[d]$. It supplies no absolute coordinates, origin,
+or parity bit. Lower bounds remain valid with this extra input.
+Absolute coordinates would instead make boxes and even tori
+zero-round two-colorable by coordinate-sum parity.
+
+We use the usual radius convention: a vertex's $T$-round information
+is its rooted radius-$T$ neighborhood with identifiers, degrees, ports,
+and visible input labels. Boundary stubs and their labels are included;
+data beyond them are not. Initially knowing neighbor identifiers
+changes the bounds by an additive constant. All constructions below
+leave an extra layer where a view must be embedded.
+
+\subsection{Non-signaling and quantum conventions}\label{sec:models}
+
+Fix a named processor set of size $n$ and the public parameters.
+A \emph{total outcome} assigns a probability distribution on
+simultaneous classical vertex outputs to every graph on this set,
+including graphs violating the grid promise. It has \emph{non-signaling
+locality $T$} if, whenever two inputs have identical joint radius-$T$
+views of a set $S$, their output marginals on $S$ agree. Joint views
+retain the actual processor names, identifiers, labels, and edges;
+they do not merely record separate isomorphism types. Correctness is
+required only on promised grid inputs. This is the total-outcome
+convention of~\cite{NScolor}.
+
+Deterministic and randomized $T$-round algorithms induce such outcomes.
+So do $T$-round quantum algorithms: tracing out all systems outside
+the backward communication cones of $S$ leaves a marginal determined
+by the operations and initial reduced state in those cones. Operations
+outside a cone cannot change that marginal. For the lower bounds, the
+initial state may be arbitrarily entangled and may depend on the
+processor names and public parameters, but must be independent of
+the unknown input topology. The processor set and state are kept
+fixed in the comparisons. The quantum upper bounds need no
+pre-shared entanglement; local register dimensions are unrestricted.
+
+A bounded-dependence outcome, in addition to this cross-input locality,
+has independent output restrictions on sets whose graph distance
+exceeds a specified dependence range $k$. Its locality parameter
+here bounds both the non-signaling radius and $k$, up to absolute
+constant factors. This is a family of finite-input distributions.
+A finitely dependent process given only on $\Z^d$ need not extend
+to such a family, so the lower bounds below make no assertion about
+the dependence range of a standalone infinite-lattice process.
+
+\section{The linear dimension lower bound}\label{sec:lower}
+
+We first construct a graph that looks like a grid throughout the
+region visible to an algorithm, yet cannot be colored with its palette.
+
+\begin{lemma}[A quantitative grid-like obstruction]\label{lem:cayley}
+Let $d\ge1$, $q\ge2$, and $T\ge0$ be integers. Put
+\[
+ s=2T+3,\qquad K=\binom{2d+s}{s}.
+\]
+If
+\begin{equation}\label{eq:criterion}
+                  \log(64K)<\frac{d}{2(q-1)^2},
+\end{equation}
+there are a prime $P$ with $8K<P<16K$ and a simple $2d$-regular
+graph $H$ on $P$ vertices with $\chi(H)>q$. Every induced closed
+radius-$(T+1)$ ball of $H$ is isomorphic to the corresponding ball
+in $\Z^d$, preserving the individual signed directions.
+\end{lemma}
+
+\begin{proof}
+Encode an integer vector by its positive and negative parts.
+Stars and bars then gives
+\begin{equation}\label{eq:ballcount}
+ \#\{z\in\Z^d:\norm{z}_1\le s\}
+ \le\#\{w\in\Z_{\ge0}^{2d}:\textstyle\sum_i w_i\le s\}
+ =K.
+\end{equation}
+Bertrand's postulate supplies a prime $P$ strictly between $8K$ and
+$16K$. In particular $P>s$, since $K\ge s+1$.
+Choose $a_1,\ldots,a_d$ independently and uniformly from $\Z/P\Z$.
+For every nonzero $z$ with $\norm{z}_1\le s$, some coefficient $z_i$
+is nonzero modulo $P$. Conditioning on all other generators shows
+\[
+        \Prob\left[\sum_i z_i a_i=0\right]=\frac1P.
+\]
+The probability that any such relation holds is at most
+$(K-1)/P<1/8$. Hence, except on an event of probability less than
+$1/8$, we have
+\begin{equation}\label{eq:norelation}
+       \sum_i z_i a_i\ne0\quad\text{for }0<\norm{z}_1\le s.
+\end{equation}
+
+The operator that sums all shifts $\pm a_i$ has Fourier eigenvalues
+\[
+ \lambda_k=2\sum_{i=1}^d\cos(2\pi k a_i/P),\quad k\in\Z/P\Z;
+ \qquad \lambda_0=2d.
+\]
+Indeed the characters $x\mapsto\exp(2\pi i kx/P)$ form an orthogonal
+basis and are eigenvectors of each shift. For fixed $k\ne0$, the
+summands in $\lambda_k$ are independent, have mean zero, and lie in
+$[-2,2]$. Here is the needed concentration estimate. If $X$ has
+these bounds and mean zero, convexity on $[-2,2]$ gives
+\[
+ \E e^{-tX}\le\cosh(2t)\le e^{2t^2}\qquad(t\ge0).
+\]
+The second inequality follows by comparing the power series, using
+$(2j)!\ge2^j j!$. For a sum of $d$ such independent variables,
+Markov's inequality and $t=u/(4d)$, for $u\ge0$, therefore give
+\[
+ \Prob[\lambda_k\le-u]\le
+       \inf_{t\ge0}e^{-tu+2dt^2}=e^{-u^2/(8d)}.
+\]
+Taking $u=2d/(q-1)$ and summing over the nonzero frequencies bounds
+the probability of any violation of
+\begin{equation}\label{eq:spectral}
+                      \lambda_k>-\frac{2d}{q-1}\quad(k\ne0)
+\end{equation}
+by
+\[
+ (P-1)e^{-d/(2(q-1)^2)}<\frac{16K}{64K}=\frac14.
+\]
+There is consequently a choice of generators satisfying both
+\eqref{eq:norelation} and \eqref{eq:spectral}.
+
+For this choice let
+\[
+ H=\operatorname{Cay}(\Z/P\Z,\{\pm a_1,\ldots,\pm a_d\}).
+\]
+Since $s\ge3$, the excluded relations include $a_i=0$,
+$2a_i=0$, and $a_i=\pm a_j$ for $i\ne j$. Thus the signed
+generators are nonzero and distinct: $H$ is simple and $2d$-regular,
+and the operator above is its adjacency matrix $A$.
+
+We spell out the chromatic implication. Let $S$ be a nonempty
+independent set of density $\alpha=|S|/P$. Since the graph has
+positive degree, $0<\alpha<1$. Set $x=1_S-\alpha\mathbf1$.
+Then $x\perp\mathbf1$,
+\[
+ \norm{x}^2=P\alpha(1-\alpha),\qquad
+ x^{\mathsf T}Ax=-2dP\alpha^2.
+\]
+Expanding in the nonconstant Fourier eigenvectors and
+using~\eqref{eq:spectral} yields
+\[
+ -2dP\alpha^2>
+ -\frac{2d}{q-1}P\alpha(1-\alpha),
+ \qquad\text{hence }\alpha<\frac1q.
+\]
+Every color class is independent, so a $q$-coloring is impossible.
+
+Finally define $\phi(z)=\sum_i z_i a_i$. Every walk in $H$ lifts to
+a sequence of signed coordinate steps, so $\phi$ maps the lattice
+radius-$(T+1)$ ball onto the corresponding ball at zero in $H$.
+Two distinct points of that lattice ball cannot have the same image:
+their difference has norm at most $2T+2$. If their images are
+adjacent, subtracting the corresponding signed basis vector gives
+a relation of norm at most $2T+3$. By~\eqref{eq:norelation}, this
+relation must be the zero vector, so that edge is exactly the
+corresponding signed grid edge. This proves both induced adjacency
+and preservation of each direction. Translation proves the assertion
+at every vertex of $H$.
+\end{proof}
+
+\subsection{Transfer without independence of the outputs}
+
+\begin{lemma}[Constant-success amplification]\label{lem:amplify}
+Suppose $H$ has $h$ vertices, $\chi(H)>q$, and all its induced
+radius-$(T+1)$ balls are signed grid balls. Let $N\ge1$ and suppose
+\begin{equation}\label{eq:packing}
+ Nh\le L^d,\qquad
+ N\le\left\lfloor\frac{L}{2T+5}\right\rfloor^d.
+\end{equation}
+For every total non-signaling outcome of locality $T$, some legal
+named, ID-labeled grid with $n=L^d$ vertices has global $q$-coloring
+success probability at most
+\[
+                         (1-1/h)^N\le e^{-N/h}.
+\]
+This holds for boxes and standard tori, including even tori when
+the prescribed $L$ is even.
+\end{lemma}
+
+\begin{proof}
+On the fixed named set $[n]$, form $N$ disjoint copies of $H$ and
+$n-Nh$ isolated vertices. Keep the same public values of $d,L,n$,
+grid-type promise, and fixed distinct identifiers as in the legitimate
+inputs. The outcome is defined on this graph even though correctness
+is not required there. Replace invalid output symbols by a fixed
+member of $[q]$; this preserves locality and cannot turn a successful
+legal coloring into a failure.
+
+Call a vertex star bad if its center has the same color as one of
+its neighbors. Every realized output vector has at least one bad
+star in each copy of $H$. Independently of this vector, an analyst
+chooses a uniformly random center in each copy, with independent
+choices between copies. Conditional on any fixed vector, the chance
+that every selected star is good is at most $(1-1/h)^N$. Averaging
+over the vector and then over the choices implies that some
+\emph{fixed} selection of $N$ centers has joint probability at most
+$(1-1/h)^N$ of all its star checks passing. No independence of
+algorithmic outputs has been used.
+
+Let $S$ be the union of these selected stars. In each copy of $H$,
+the radius-$T$ neighborhood of its selected star is the
+radius-$(T+1)$ ball at the center. Put $b=2T+5$ and partition a
+legal grid into $\lfloor L/b\rfloor^d$ disjoint coordinate blocks
+of side $b$, ignoring leftover strips. Embed one selected ball
+into each of $N$ blocks, centered at coordinate $T+2$ within the
+block. Its coordinate support lies between $1$ and $b-2$.
+Consequently these embedded balls have no edges between different
+blocks and lie away from a box boundary or a torus seam. They have
+the full degrees and signed ports needed for the views.
+
+Preserve the actual names and identifiers in each embedded ball,
+and assign the unused names and identifiers bijectively to the
+remaining grid positions. There are enough vertices by
+\eqref{eq:packing}. The joint radius-$T$ view of $S$, including
+boundary degrees and ports, is identical on the two inputs.
+Non-signaling locality therefore equates their output marginals
+on $S$. A globally proper coloring of the genuine grid must pass
+all the selected star checks, proving the claim.
+\end{proof}
+
+\begin{theorem}[Uniform dimension lower bound]\label{thm:dimension}
+Let $q\ge2$ and assume~\eqref{eq:large}. If a total non-signaling
+outcome of locality $T$ properly $q$-colors every legal grid with
+global probability at least $2/3$, then
+\begin{equation}\label{eq:uniformlower}
+                 T+2>\frac{d}{512(q-1)^2\log(q+1)}.
+\end{equation}
+For four colors one also has
+\begin{equation}\label{eq:fourlower}
+                       T+2>d/256\qquad(d\ge1024).
+\end{equation}
+Both statements permit a supplied frame and a bipartiteness promise.
+\end{theorem}
+
+\begin{proof}
+Put $a=(q-1)^2$ and $b=\log(q+1)$, and suppose
+$T+2\le d/(512ab)$. Since $T\ge0$, necessarily $d\ge1024ab$.
+Also $s=2T+3<d/(256ab)\le d$. The elementary binomial estimate
+$\binom{m}{s}\le(em/s)^s$ gives
+\[
+ \log K\le s\log\frac{e(2d+s)}s
+             \le s\log\frac{3ed}s.
+\]
+The function $x\log(3e/x)$ increases for $0<x\le1$; hence
+\[
+ \log K\le\frac{d}{256ab}\log(768eab)
+             \le\frac{10d}{256a}.
+\]
+For the last step, use $b\ge\log3$, $\log(768e)\le7b$,
+$\log a\le2b$, and $\log b\le b$.
+Moreover $\log64\le d/(256a)$ because $d/(256a)\ge4b>\log64$.
+Thus
+\[
+                    \log(64K)\le\frac{11d}{256a}<\frac{d}{2a},
+\]
+and Lemma~\ref{lem:cayley} applies. As $s\le d$,
+\[
+                     K\le\binom{3d}{d}\le2^{3d}=8^d,
+                     \qquad h=P<16\cdot8^d.
+\]
+Take $N=2h$. In this nonvacuous regime $d>1024$ and
+$2T+5\le d$. Consequently
+\[
+ Nh=2h^2<512\cdot64^d\le d^{2d}\le L^d,
+ \qquad
+ N<32\cdot8^d\le d^d\le
+       \left\lfloor\frac{L}{2T+5}\right\rfloor^d.
+\]
+For example, the first elementary inequality follows from
+$(d^2/64)^d\ge16^d>512$ for $d\ge1024$; the second follows from
+$(d/8)^d\ge128^d>32$. Lemma~\ref{lem:amplify} now bounds success
+by $e^{-2}<2/3$, a contradiction.
+
+For~\eqref{eq:fourlower}, suppose $T+2\le d/256$ and $d\ge1024$.
+Then $s<d/128$, and monotonicity of
+$x\log(e(2d+x)/x)$ gives
+\[
+ \log(64K)\le\log64+\frac{d}{128}\log(257e)<\frac d{18}.
+\]
+To check the last strict inequality without numerical approximation,
+use $\log64<104/25$ and $\log(257e)<131/20$. The corresponding
+margin is exactly
+\[
+ \frac1{18}-\frac{104/25}{1024}-\frac{131/20}{128}
+                         =\frac{37}{115200}>0.
+\]
+The logarithm bounds follow from the finite rational inequalities
+$\sum_{j=0}^{12}(104/25)^j/j!>64$ and
+$\sum_{j=0}^{14}(111/20)^j/j!>257$, and the exponential series.
+This is~\eqref{eq:criterion} for $q=4$. The same estimates
+$s\le d$, $2T+5\le d$, and the same packing with $N=2h$ apply.
+\end{proof}
+
+For any fixed $\rho\in(0,1]$, replacing $N=2h$ by
+$N=\lceil h\log(2/\rho)\rceil$ makes the success upper bound at most
+$\rho/2$. The constant factor depending on $\rho$ is absorbed by
+the packing inequalities for sufficiently large $d$. This proves
+$\Omega_q(d)$ for every fixed positive success probability in all
+the finite-input models of Table~\ref{tab:main}. The proof still
+uses only ordinary chromatic number: every run outputs one
+simultaneous classical color at every vertex.
+
+\section{Four colors with single-exponential dimension dependence}
+\label{sec:upper}
+
+We first describe a deterministic algorithm with identifiers and a
+supplied frame. Later we remove the frame and replace the identifiers
+used for symmetry breaking by a locally proper initial coloring.
+
+The only general-graph subroutine needed is the following elementary
+form of color reduction. A proof, including a uniform finite-table
+construction, is in Appendix~\ref{app:reduction}.
+
+\begin{lemma}[Color reduction and greedy independence]\label{lem:reduction}
+On a graph of maximum degree at most a known $D\ge1$, a supplied
+proper coloring with labels in $[m]$ can be reduced deterministically
+to at most $4096(D+1)^6$ colors in $O(1+\ls m)$ rounds.
+A maximal independent set can consequently be computed in
+$O((D+1)^6+1+\ls m)$ rounds. The constants are absolute;
+identifiers are unnecessary once the initial proper coloring is given.
+\end{lemma}
+
+The polynomial exponent in this supporting lemma is unimportant for
+our dimension bound. Its useful features are uniform constants and
+the explicit dependence on the initial palette.
+
+\subsection{Sparse centers from successive scales}
+
+A set of grid vertices is \emph{$a$-separated} if any two distinct
+members have maximum-norm distance greater than $a$. It
+\emph{$R$-dominates} if every vertex has maximum-norm distance at
+most $R$ from the set. All boxes in this section are maximum-norm
+balls intersected with the vertex set of the input graph.
+
+\begin{lemma}[Packing]\label{lem:packingupper}
+If $S$ is $a$-separated, $a>0$, then any maximum-norm ball of radius
+$R$ contains at most $(1+2R/a)^d$ points of $S$. For a torus we
+assume $2R+a<L$.
+\end{lemma}
+
+\begin{proof}
+Put a continuous cube of side $a$ around each selected point.
+Their interiors are disjoint, and all these cubes lie in a cube of
+side $2R+a$. The volume ratio gives the bound. For a box, the
+continuous cubes may extend past the input boundary, which does
+not affect this comparison. For a torus, lift the radius-$R$ ball
+to coordinate intervals in $\R^d$; the enlarged cube has side less
+than $L$, and the same disjoint-volume comparison applies.
+\end{proof}
+
+\begin{lemma}[A net with covering radius below twice its spacing]
+\label{lem:net}
+Let $s\ge2$ be a power of two and, in the torus case, suppose
+$L>40s$. An $s$-separated set that $(2s-1)$-dominates can be
+computed in
+\[
+                    O\bigl(ds(5^{6d}+1+\ls n)\bigr)
+\]
+deterministic rounds.
+\end{lemma}
+
+\begin{proof}
+Set $S_{-1}=V(G)$. For $j=0,\ldots,\log_2s$ put $r_j=2^j$,
+and form an auxiliary graph $H_j$ on $S_{j-1}$ by joining centers
+whose maximum-norm distance is at most $r_j$. Let $S_j$ be a
+maximal independent set of $H_j$.
+
+When $j=0$ the closed neighborhoods have size at most $3^d$.
+For $j\ge1$, the set $S_{j-1}$ is $r_j/2$-separated, so packing
+bounds each closed neighborhood by
+$(1+2r_j/(r_j/2))^d=5^d$. All these uses on a torus satisfy
+$2r_j+r_j/2<L$. Thus each $H_j$ has degree at most $5^d$.
+Identifiers give an initial proper coloring with $m=n^C$ labels;
+Lemma~\ref{lem:reduction} computes its maximal independent set in
+$O(5^{6d}+1+\ls n)$ auxiliary rounds. Auxiliary neighbors can
+communicate in $O(dr_j)$ physical rounds. Routes and neighbors
+are determined by gathering the corresponding grid neighborhood;
+unbounded message sizes allow all routes to be used concurrently.
+
+Maximality ensures that every point of $S_{j-1}$ is within $r_j$
+of $S_j$. Induction gives separation $r_j$ and domination radius
+at most $\sum_{i=0}^j2^i=2^{j+1}-1$. Finally,
+$\sum_{j=0}^{\log_2s}r_j<2s$, proving the time bound and the
+claimed properties of the last set.
+\end{proof}
+
+The covering radius $2s-1$ is sufficient; we do not need an exactly
+maximal $s$-separated set. This is what permits the use of sparse
+auxiliary graphs throughout the construction.
+
+\subsection{Choosing boxes with separated faces}\label{sec:boxes}
+
+Fix
+\begin{equation}\label{eq:upperparameters}
+ s=2^{\lceil\log_2(16d\,25^d)\rceil},\qquad
+ D_0=25^d,\qquad R=8s+2.
+\end{equation}
+In particular $16d25^d\le s<32d25^d$, so $s=2^{O(d)}$.
+If $L\le40s$, gather the entire graph in $O(dL)=2^{O(d)}$
+rounds and choose a canonical proper three-coloring using the
+identifier order. Such a coloring exists: each coordinate path
+or cycle has a proper three-coloring, and the sum of its coordinate
+colors modulo three is proper on their Cartesian product. A
+single-vertex factor causes no difficulty. Exhaustive local search
+after gathering is allowed. This branch needs no supplied frame.
+
+Henceforth suppose $L>40s$. Obtain centers $S$ from
+Lemma~\ref{lem:net} and form the conflict graph $J$ on $S$, joining
+centers at maximum-norm distance at most $R$. Packing gives
+\[
+ \Delta(J)+1\le(1+2R/s)^d=(17+4/s)^d\le19^d\le D_0.
+\]
+The torus condition holds because $2R+s=17s+4<L$.
+Use Lemma~\ref{lem:reduction} to color $J$ with
+$O((D_0+1)^6)$ colors, and process these color classes in increasing
+order. Each center $a$ selects an integer radius
+\begin{equation}\label{eq:radiusrange}
+                         r_a\in\{2s+1,\ldots,4s\}.
+\end{equation}
+For every previously processed conflict neighbor $b$, every coordinate
+$i$, and both signs $\epsilon,\eta\in\{-1,1\}$, require
+\begin{equation}\label{eq:faces}
+           \dist(a_i+\epsilon r_a,b_i+\eta r_b)\ge2.
+\end{equation}
+This distance is ordinary coordinate distance in a box and cyclic
+distance on a torus. In a box we impose the condition even on face
+coordinates outside the input box.
+
+For a fixed $b,i,\epsilon,\eta$, at most three candidate radii
+violate~\eqref{eq:faces}: the face coordinates would have difference
+$-1,0$, or $1$. On a torus these are three congruences modulo $L$,
+each with at most one solution in the candidate interval, whose
+length $2s$ is less than $L$. Each previous neighbor thus forbids
+at most $12d$ radii. Since
+\[
+                          2s>12dD_0,
+\]
+a permissible radius always exists; choose the least one. Centers
+processed in the same class are not conflict neighbors and make
+their choices independently.
+
+Let $B_a=B_\infty(a,r_a)$ and call
+$I_a=B_\infty(a,r_a-1)$ its \emph{interior}. This is the clipped
+metric interior just defined, not an extra boundary condition at
+the outer boundary of the input box. The interiors cover the grid:
+each vertex is within $2s-1$ of a center, whereas $r_a-1\ge2s$.
+If the expanded boxes $B_\infty(a,r_a+1)$ and
+$B_\infty(b,r_b+1)$ intersect, their centers have distance at most
+$8s+2=R$. Their radii therefore satisfy~\eqref{eq:faces}.
+
+\subsection{The boundary-parity conversion}
+
+A vertex $v$ is on the $i$-th border of center $a$ if
+\[
+        v\in B_a,\qquad v_i=a_i-r_a\ \text{or}\ v_i=a_i+r_a,
+\]
+with coordinate equality modulo $L$ on a torus. Define
+\begin{equation}\label{eq:borderbit}
+ b(v)=\#\{(a,i):v\text{ is on the }i\text{-th border of }a\}
+                  \pmod2.
+\end{equation}
+Input-boundary faces created solely by clipping do not contribute
+to this count.
+
+\begin{lemma}[Containment of monochromatic components]\label{lem:border}
+Every connected component induced by a single value of $b$ is
+contained in some $I_a$. It is bipartite and has weak graph
+diameter at most $8ds$, meaning that any two of its vertices have
+distance at most $8ds$ in the whole graph $G$.
+\end{lemma}
+
+\begin{proof}
+Consider an edge $uv$ with $u\in I_a$ and $v\notin I_a$.
+Only one coordinate, say $j$, changes. Thus $v$ lies on exactly
+the $j$-th border of $a$, and $u$ lies on no border of $a$.
+
+No other center $b$ can contribute a $j$-border at $u$ or $v$.
+If it did, its expanded box would meet that of $a$, and the
+corresponding two parallel faces would have coordinate distance
+at most one, contrary to~\eqref{eq:faces}. For a coordinate
+$i\ne j$, the border contributions of every other box are
+unchanged along $uv$. Indeed the $i$-coordinate is unchanged;
+if membership in such a face changed, membership in its box
+would change along coordinate $j$, forcing one endpoint onto
+a $j$-border of that box. We have just excluded this.
+Consequently the unreduced count in~\eqref{eq:borderbit} increases
+by exactly one, so $b(u)\ne b(v)$.
+
+Every vertex is in some $I_a$. A path of constant $b$ beginning
+there cannot leave $I_a$, because its first exit would cross an
+edge of the preceding kind. This proves containment. Coordinate
+diameters within $I_a$ are less than $2r_a\le8s$, so ambient
+graph distances are at most $8ds$. Finally the containing box
+is bipartite. On a torus it lifts to an ordinary lattice box,
+since its side length is less than $8s+1<L-1$; no wrapping edge
+joins its opposite faces. Clipping by a box boundary also
+preserves bipartiteness.
+\end{proof}
+
+After computing $b$, each vertex gathers the labeled
+radius-$(8ds+1)$ neighborhood. It contains its entire
+$b$-component and its boundary, by the weak diameter bound.
+Local computation identifies that component, chooses its
+minimum-identifier vertex as root, and assigns the parity of
+distance to the root \emph{inside the component}. The component
+is bipartite, so this gives a well-defined bipartition bit $p(v)$.
+Its intrinsic diameter need not be small: the entire component
+has already been gathered using ambient graph distance.
+
+Output $(b(v),p(v))\in\{0,1\}^2$. If an edge changes $b$, its
+endpoints already differ. Otherwise the endpoints lie in one
+component and their bipartition bits differ. The output is a
+proper four-coloring.
+
+The conflict-graph color reduction and radius selection cost
+\[
+                  O\bigl(dR((D_0+1)^6+1+\ls n)\bigr)
+\]
+physical rounds. Computing the border bits requires gathering
+center radii within distance $4s$, at cost $O(ds)$, and the
+last component step costs $O(ds)$. Together with the net and
+small-side branches, an explicit sufficient bound is
+\begin{equation}\label{eq:explicitupper}
+ O\bigl(d^2 25^{7d}+d^2 25^d(1+\ls n)\bigr)
+                         =2^{O(d)}(1+\ls n).
+\end{equation}
+This proves the deterministic upper bound with a frame.
+
+\subsection{Recovering the necessary geometry without a frame}
+\label{sec:unframed}
+
+The large-side branch has $L>40s\ge5$. In a full box or standard
+torus of side at least five, two incident edges belong to different
+coordinate axes if and only if they lie together in a four-cycle.
+Every such four-cycle is a coordinate square. Thus a radius-two
+view identifies the groups of incident edges belonging to one
+axis: opposite pairs and, at a box boundary, singletons.
+
+A root may name these groups and signs arbitrarily. Across an
+edge, each transverse direction is transported through its unique
+coordinate square. The back edge receives the opposite sign,
+and the direction of travel is transported by straight continuation,
+when the continuation edge exists; a
+missing continuation records a boundary. In a neighborhood of
+graph radius $t$, radius $t+2$ provides all the squares required
+for this transport. To justify consistency, compare the procedure
+with the actual Cartesian-product representation of the promised
+input: at the root they differ by a signed permutation of axes,
+and every square and straight-continuation rule preserves that
+agreement. Coordinates are taken modulo the known $L$ on tori.
+The accumulated displacement of any path therefore gives the
+correct relative coordinates, including when the neighborhood
+wraps around the torus.
+
+All geometric tests used above are invariant under signed
+permutations: maximum-norm distance, cubes, parallel-face
+separation, and the total border count. The chosen centers
+depend on auxiliary colors, the radius choice is the least
+feasible integer, and the component root depends on identifiers.
+Different processors need not use the same axis names.
+An additional two layers suffice for each geometric gathering;
+the sum of these costs is already covered by
+\eqref{eq:explicitupper}. This proves the unframed upper bound.
+
+\section{Removing the size term in the stronger models}\label{sec:transfer}
+
+The geometric construction needs symmetry-breaking labels that
+distinguish nearby vertices, rather than globally unique labels.
+We now state precisely the published ingredients used to obtain
+such labels. These are supporting general-graph results; all
+dependence on grid dimension is tracked in the subsequent reduction.
+
+\begin{theorem}[Cited initialization primitives]\label{thm:primitives}
+For finite graphs of maximum degree at most a known $D\ge1$:
+\begin{enumerate}
+\item There is an exact proper $3^D$-coloring distribution with
+dependence range and non-signaling locality $O(1+\ls D)$.
+The family is consistent under subgraph isomorphisms of enlarged
+neighborhoods, in particular under equal named local views on
+different inputs.
+\item With $n$ and $D$ known, a quantum algorithm starting from a
+product state produces a proper $O(D^2)$-coloring in
+$O(1+\ls D)$ rounds with global probability at least $1-n^{-a}$
+for every fixed requested $a>0$.
+\end{enumerate}
+The constants in the dependence on $D$ are uniform.
+\end{theorem}
+
+Part 1 is the intermediate $3^D$-coloring in the \emph{proof} of
+Lemma 6.14 of Akbari et al.~\cite{OnlineQuantum}, obtained from
+their rooted-pseudoforest coloring (Lemma 6.11) and composition
+lemmas (6.4 and 6.8). We use their corrected February 2026 version.
+The statement of their Lemma 6.14 additionally reduces the palette
+to $D+1$ at a larger cost; that further step is not used here.
+Part 2 is Theorem 6.5 of the September 2026 preprint of
+Flin--Li--Suomela~\cite{QuantumBreak}. Its local quantum resources
+can depend on $n$ and the accuracy parameter. It does not claim
+exact success. These are the two imported symmetry-breaking
+theorems in the stronger-model upper bounds.
+
+\begin{lemma}[Power graphs and postprocessing]\label{lem:power}
+Let $G^r$ join distinct vertices at $G$-distance at most $r$, where
+$r\ge1$ is an integer. A total non-signaling outcome of locality
+$t$ on $G^r$ pulls back to locality $O(r(t+1))$ on $G$.
+A dependence range $k$ becomes at most $rk$.
+Deterministic $b$-round postprocessing adds $b$ to non-signaling
+locality and at most $2b$ to dependence range.
+A quantum round on $G^r$ can be simulated in $O(r)$ rounds on
+$G$, after $O(r)$ setup.
+\end{lemma}
+
+\begin{proof}
+The radius-$t$ joint view of a set in $G^r$ is determined by
+its radius-$r(t+1)$ view in $G$. The extra $r$ determines all
+power edges incident to visible vertices, including the
+short paths witnessing those edges. Equality of these original
+views therefore implies equality of the required power-graph
+views and output marginals. If two sets have $G$-distance
+greater than $rk$, no path of at most $k$ power edges can join
+them; the dependence assertion follows.
+
+A $b$-round postprocessing reads only the $b$-neighborhood of
+its output set. The neighborhoods of two sets at distance
+greater than $rk+2b$ remain separated by more than $rk$,
+which proves the composition bounds. For quantum simulation,
+gather the physical radius-$r$ neighborhoods and fix a route
+of length at most $r$ for each ordered pair of virtual
+neighbors, using identifiers to break ties. Route each virtual
+message along its path. All registers may travel concurrently
+because capacities are unrestricted. A quantum register is
+forwarded along its route, never copied.
+\end{proof}
+
+\begin{theorem}[Four colors with no size-dependent time term]
+\label{thm:strongupper}
+Full balanced boxes and standard tori admit exact four-coloring
+outcomes in $\NS$ and $\BD$ with locality $2^{O(d)}$.
+They admit $2^{O(d)}$-round quantum four-coloring algorithms
+with global probability at least $1-n^{-a}$ for any fixed $a>0$,
+without pre-shared entanglement. No frame is required.
+\end{theorem}
+
+\begin{proof}
+Use $s,R$ from~\eqref{eq:upperparameters} and set
+\begin{equation}\label{eq:powerradius}
+             r=64ds+2,\qquad D_{\mathrm{pow}}=(2d)^{r+1}.
+\end{equation}
+The latter is an upper bound on the degree of $G^r$ whenever
+$G$ has maximum degree at most $2d$: the number of reachable
+vertices is at most $\sum_{j=0}^r(2d)^j<(2d)^{r+1}$.
+Every auxiliary edge used by the geometric construction has
+physical length at most $dR<r$. Every final monochromatic
+component has weak diameter at most $8ds<r$.
+
+For non-signaling and bounded dependence, apply part 1 of
+Theorem~\ref{thm:primitives} to $G^r$. Let $X$ denote the resulting
+proper coloring, with labels in $[Q]$, $Q=3^{D_{\mathrm{pow}}}$.
+By Lemma~\ref{lem:power}, its locality and dependence range
+on $G$ are $O(r(1+\ls D_{\mathrm{pow}}))$.
+
+Run the geometric algorithm using $X$ as the initial coloring
+in every invocation of Lemma~\ref{lem:reduction}. This is valid
+even though the sets of centers are chosen adaptively: all
+edges of all auxiliary graphs have length at most $r$, so
+restriction of $X$ to any set of retained centers is still a
+proper coloring of the relevant auxiliary graph. Its palette
+bound remains $Q$; the size term in the algorithm is therefore
+$1+\ls Q$ instead of $1+\ls n$. For component bipartitions,
+the minimum $X$-label is unique within each component because
+its weak diameter is less than $r$. Identifiers may also be
+retained for gathering and root choice; their magnitude never
+enters the remaining round bound.
+
+If $L\le40s$, the whole grid has diameter at most $dL<r$,
+so its $X$-labels are distinct and the whole-graph branch
+works within the same bound. Otherwise use the separated-box
+construction. Quantitatively,
+\[
+ r=2^{O(d)},\qquad
+ D_{\mathrm{pow}}\le2^{2^{O(d)}},\qquad
+ \ls Q=O(1+\ls d).
+\]
+The initialization and the deterministic postprocessing each
+take $2^{O(d)}$ locality. Lemma~\ref{lem:power} proves the same
+bound for dependence range. Correctness is exact.
+
+For quantum computation, first handle $n=1$ directly and otherwise
+apply part 2 of Theorem~\ref{thm:primitives} once to the entire
+power graph, with degree bound
+$\min\{D_{\mathrm{pow}},n-1\}$. This gives
+$Q=O(D_{\mathrm{pow}}^2)$ initial labels, so again
+$\ls Q=O(1+\ls d)$. Simulating the virtual rounds by
+Lemma~\ref{lem:power} costs $2^{O(d)}$ physical rounds.
+Conditioned on the one event that this initial coloring is
+proper, every later step is deterministic and correct.
+Thus the original global success guarantee $1-n^{-a}$ is
+preserved; no union bound over the later auxiliary computations
+is needed.
+\end{proof}
+
+For completeness, these constructions have total outcomes on
+inputs violating the promise. First delete every edge incident
+to a vertex of degree greater than $2d$, a local operation that
+changes no legal grid. Form the power graph of the resulting
+bounded-degree graph and use the total initialization family.
+Run the geometric postprocessing for its fixed prescribed time;
+when a local view fails a required geometric test, use a fixed
+fallback rule. On all inputs this is a bounded-radius
+deterministic postprocessing, whether or not its coloring is
+proper. Hence the resulting family satisfies exactly the
+cross-input locality convention used in the lower bound.
+
+\section{The classical size term, uniformly in dimension}
+\label{sec:size}
+
+For fixed dimension the classical size dependence is familiar.
+We include the reduction that keeps its constants independent of
+$d$, and a short proof of the deterministic ingredient.
+
+\subsection{A deterministic path and cycle lower bound}
+
+For $m\ge1$, let $S_m(L)$ have as vertices the strictly increasing
+$m$-tuples from $[L]$. Join the two consecutive $m$-windows of
+each increasing $(m+1)$-tuple. In particular $S_1(L)=K_L$.
+If $f$ is a $k$-coloring of $S_m(L)$ for $m\ge2$, assign to
+$(x_1,\ldots,x_{m-1})$ the subset
+\[
+ \{f(x_1,\ldots,x_{m-1},y):y>x_{m-1}\}\subseteq[k].
+\]
+This is a proper coloring of $S_{m-1}(L)$ with at most $2^k$
+colors. Indeed, for an increasing $m$-tuple, the color
+$f(x_1,\ldots,x_m)$ belongs to the subset for its prefix
+and does not belong to the subset for its suffix: every
+extension of the suffix is adjacent to the original tuple.
+Empty subsets cause no exception to this argument.
+Iterating yields
+\begin{equation}\label{eq:shift}
+     L\le \underbrace{2^{2^{\cdot^{\cdot^{2^k}}}}}_{m-1
+        \text{ exponentiations}}
+     \quad\text{whenever }S_m(L)\text{ is }k\text{-colorable}.
+\end{equation}
+
+Now fix all public parameters of a deterministic $T$-round
+algorithm on an oriented $L$-cycle, with identifiers in $[L]$.
+If $L\ge2T+4$, its output on an increasing local ID sequence
+defines a function on $S_{2T+1}(L)$. Each pair of adjacent
+windows can be embedded in one cycle ID assignment, completing
+the unused identifiers arbitrarily. Correctness forces the two
+outputs to differ. A $c$-color algorithm therefore induces a
+$c$-coloring of this shift graph. By~\eqref{eq:shift},
+\[
+                         2T\ge\ls L-\ls c.
+\]
+For an oriented path, place the windows in the interior, leaving
+one unused vertex at either end; the same safe condition
+$L\ge2T+4$ suffices. If that condition fails, $T$ is already
+linear in $L$, which implies the stated iterated-logarithmic
+lower bound up to an absolute additive constant. Restricting
+to even $L$ does not change the proof. This is the standard
+shift-graph argument underlying Linial's lower bound~\cite{Linial}.
+
+\subsection{Private randomness}
+
+We use the following precise published ingredient: for each
+fixed $\rho>1/2$, private-randomness three-coloring of directed
+$L$-cycles, with distinct adversarial identifiers in $[L]$ and
+global success at least $\rho$, requires $\Omega(\ls L)$
+rounds~\cite[Theorem 2.1]{Naor}. The proof allows arbitrary local
+decision functions for each fixed $L$; knowledge of $L$ and
+other fixed public parameters does not weaken the bound.
+
+It extends to any fixed palette $c\ge3$: after a proper
+$c$-coloring, process colors $c,c-1,\ldots,4$, replacing each
+by an available member of $\{1,2,3\}$. A cycle vertex has at
+most two neighbors, and the simultaneously processed vertices
+form an independent set. This takes $c-3$ rounds and preserves
+success whenever the initial coloring is proper.
+
+Here is an explicit reduction covering paths as well. Run a
+putative $T$-round path algorithm on a cycle with the same
+public size, interpreting its interior local rule at every
+vertex. As in the dimension lower bound, normalize any output
+outside $[c]$ to a fixed color. For the analysis only, choose a
+uniformly random edge to cut, independently
+of all private tapes, and couple the path and cycle runs by
+using the same tapes and IDs. If the cycle output has a bad
+edge, select one deterministically from the realized vector.
+Except for at most $2T+3$ choices of cut edge, that bad edge
+and the views producing its outputs are unchanged on the
+resulting path. If every path succeeds with probability at
+least $2/3$, averaging over cuts gives
+\[
+ \Prob[\text{cycle failure}]\left(1-\frac{2T+3}{L}\right)
+                         \le\frac13.
+\]
+For $T\le L/16$ and $L\ge24$, the parenthesized factor is at
+least $3/4$, so cycle success is at least $5/9>1/2$ and Naor's
+bound applies. Otherwise $T$ is already linear in $L$, or $L$
+is bounded. Thus paths have the same $\Omega_c(\ls L)$ lower
+bound up to an additive constant. The cycle result and its
+proof also apply when only even lengths are considered.
+
+\subsection{Simulating a grid by a path or cycle}
+
+One processor of an oriented $L$-cycle can simulate an entire
+$(d-1)$-dimensional cross-section of an $L^d$-vertex torus.
+Index the $L^{d-1}$ transverse positions by
+$j\in\{0,\ldots,L^{d-1}-1\}$. At a cycle processor with ID
+$i\in[L]$, give its virtual vertex $j$ the identifier
+\[
+                           (i-1)L^{d-1}+j+1\in[n].
+\]
+These are all distinct. Edges in transverse directions are
+internal to a simulator; edges in the first direction connect
+adjacent simulators. Unbounded messages permit one grid round
+to be simulated in one cycle round. The supplied grid frame,
+if any, is also simulated consistently. Reading the output at
+one fixed transverse position produces a proper $c$-coloring
+of the cycle whenever the grid output is proper.
+
+For randomized algorithms, each simulator draws the collection
+of private tapes for all its virtual vertices. Collections
+at distinct simulators are independent, exactly as required
+by the private-randomness lower bound. For boxes use an
+oriented $L$-path and transverse boxes. The rule may depend on
+$d$, on $n=L^d$, and on the grid type; these are fixed public
+parameters in the one-dimensional lower bound. We have proved
+\[
+                           T\ge a_c\ls L-b_c
+\]
+with constants independent of $d$.
+
+Finally, under~\eqref{eq:large} we have $d\le\sqrt L$ and
+$\log_2L\le\sqrt L$ for $L\ge128$. Thus
+$\log_2 n=d\log_2L\le L$ and
+\[
+                              \ls n\le1+\ls L.
+\]
+Combining the dimension and size lower bounds, using
+$\max\{x,y\}\ge(x+y)/2$, gives
+$\Omega_c(d+\ls n)$ up to an additive constant for deterministic
+and private-randomness $\LOCAL$. This finishes the lower-bound
+claims of Theorem~\ref{thm:main}.
+
+\section{The remaining dimension gap}\label{sec:gap}
+
+For each fixed $c\ge4$, even non-signaling outcomes must see a
+distance proportional to $d$, while the construction here uses
+a distance exponential in $d$. When $L$ is of order $d^2$,
+$\ls n=\ls d+O(1)$, so the lower bound is a genuine dimension
+obstruction rather than a disguised size lower bound. In
+particular it rules out $O(\log d+\ls n)$ time for a fixed
+palette in the classical models and $O(\log d)$ locality
+in the stronger models.
+
+There is a concrete limitation of the separated-box proof.
+Suppose radius assignment must work for every $s$-separated,
+$s$-dominating net, using the interval
+$\{2s+1,\ldots,4s\}$ and condition~\eqref{eq:faces} whenever
+expanded boxes intersect. Consider the $2^{d-1}$ centers
+\[
+                         \{0,s+1\}^{d-1}\times\{0\}.
+\]
+They are $s$-separated and can be extended to a maximal such
+set in a sufficiently large finite box, which is then
+$s$-dominating. Every pair of their boxes overlaps because
+their center distance is $s+1$, while their radii exceed $2s$.
+All their positive faces in the last coordinate are at positions
+$r_a$. Condition~\eqref{eq:faces} therefore requires these
+$2^{d-1}$ radii to be pairwise at least two apart. The interval
+of $2s$ consecutive candidate integers accommodates at most
+$s$ such radii. Necessarily $s\ge2^{d-1}$.
+
+Thus a radius rule that accommodates arbitrary nets in this
+way already needs an exponential scale. This does not prove
+an exponential coloring lower bound. A more structured net,
+a different covering, or a different conversion of a covering
+to a coloring could improve the upper bound. Whether the
+dimension dependence for four colors can be polynomial is
+not settled by these arguments.
+
+\appendix
+\section{An elementary color-reduction subroutine}\label{app:reduction}
+
+We prove Lemma~\ref{lem:reduction} so that every deterministic
+step of the geometric upper bound is specified. The following
+standard set-system method only needs a polynomial number of
+colors in the degree; optimizing its exponent is unnecessary.
+
+Fix integers $D\ge1$ and $m\ge2$. There are sets
+$A_1,\ldots,A_m\subseteq[M]$, where
+\begin{equation}\label{eq:selectiveM}
+                     M\le\left\lceil8(D+1)^2\log(m+1)\right\rceil,
+\end{equation}
+such that for every $i$ and every
+$J\subseteq[m]\setminus\{i\}$ with $|J|\le D$,
+\begin{equation}\label{eq:selective}
+                         A_i\setminus\bigcup_{j\in J}A_j\ne\varnothing.
+\end{equation}
+To see this, put each universe element in each set independently
+with probability $p=1/(D+1)$. For a fixed pair $(i,J)$, a given
+element witnesses~\eqref{eq:selective} with probability
+\[
+ p(1-p)^{|J|}\ge\frac{1}{D+1}\left(\frac D{D+1}\right)^D
+                       \ge\frac1{4(D+1)}.
+\]
+The last inequality follows from $(1+1/D)^D<e<4$.
+There are at most $(m+1)^{D+1}$ pairs $(i,J)$: encode $i$
+and list the members of $J$ in $D$ padded positions.
+With $M=\lceil8(D+1)^2\log(m+1)\rceil$, a union bound bounds
+the probability that any pair has no witness by
+\[
+ (m+1)^{D+1}\exp\left(-\frac{M}{4(D+1)}\right)
+                     \le(m+1)^{-(D+1)}<1.
+\]
+Hence such a family exists. It is a deterministic, uniformly
+computable finite table: enumerate $M=1,2,\ldots$ and all
+membership tables, stopping at the first that satisfies the
+finite tests~\eqref{eq:selective}. The argument proves that
+this search terminates within~\eqref{eq:selectiveM}. Its
+computational cost consumes no communication rounds.
+
+Given a proper $[m]$-coloring of a degree-$D$ graph, vertices
+exchange their colors once. A vertex of color $i$ chooses
+the least element of $A_i$ outside the sets of its neighbors'
+colors. This is possible by~\eqref{eq:selective}. If its
+neighbor has old color $j$, the chosen element is outside
+$A_j$, whereas that neighbor's new color belongs to $A_j$.
+Thus the new coloring is proper and uses at most $M$ colors.
+
+Let $b=16(D+1)^2\ge64$. For $m\ge2$, the palette bound is
+\[
+                              M\le b\log_2m.
+\]
+Indeed $\log(m+1)\le2\log m$ and $\log2<3/4$, so
+$M\le12(D+1)^2\log_2m+1\le16(D+1)^2\log_2m$. If
+$m\ge2^{b^2}$, two applications reduce the palette to at most
+\[
+ b\log_2(b\log_2m)\le\log_2m.
+\]
+For the inequality, write $x=\log_2m\ge b^2$; the function
+$x-b(\log_2b+\log_2x)$ is increasing there and at $x=b^2$
+has value $b(b-3\log_2b)\ge0$. Every pair of reductions
+therefore removes at least one iterated-logarithm level until
+the palette is at most $2^{b^2}$. One further reduction gives
+at most $b^3=4096(D+1)^6$ colors. An already smaller palette
+can simply be kept. This uses $O(1+\ls m)$ rounds, with an
+absolute constant. A proper one-color input is edgeless
+and needs no reduction.
+
+Finally process the reduced color classes in order. A vertex
+joins an independent set if none of its already processed
+neighbors has joined. Simultaneously processed vertices are
+nonadjacent. Every excluded vertex has a selected neighbor,
+so the resulting independent set is maximal. The sweep takes
+at most $4096(D+1)^6$ rounds. This proves the lemma, including
+its uniformity and its dependence on the initial palette.
+
+\begin{thebibliography}{99}
+
+\bibitem{Alon}
+Noga Alon.
+\emph{The chromatic number of random Cayley graphs}.
+European Journal of Combinatorics 34(8):1232--1243, 2013.
+\url{https://www.cs.tau.ac.il/~nogaa/PDFS/colcayley6.pdf}.
+
+\bibitem{grid}
+Sebastian Brandt, Juho Hirvonen, Janne H. Korhonen,
+Tuomo Lempi\"ainen, Patric R. J. \"Osterg\aa rd,
+Christopher Purcell, Joel Rybicki, Jukka Suomela,
+and Przemys\l aw Uzna\'nski.
+\emph{LCL problems on grids}.
+PODC 2017, pp.\ 101--110.
+\url{https://arxiv.org/abs/1702.05456v2}.
+See Section 8, Theorem 4 and Lemma 8.
+
+\bibitem{HSW}
+Alexander E. Holroyd, Oded Schramm, and David B. Wilson.
+\emph{Finitary coloring}.
+Annals of Probability 45(5):2867--2898, 2017.
+\url{https://arxiv.org/abs/1412.2725}.
+See Lemmas 12--14 and Corollary 15.
+
+\bibitem{Linial}
+Nathan Linial.
+\emph{Locality in distributed graph algorithms}.
+SIAM Journal on Computing 21(1):193--201, 1992.
+\url{https://doi.org/10.1137/0221015}.
+
+\bibitem{Naor}
+Moni Naor.
+\emph{A lower bound on probabilistic algorithms for distributive ring coloring}.
+SIAM Journal on Discrete Mathematics 4(3):409--412, 1991.
+\url{https://doi.org/10.1137/0404036}.
+Author manuscript:
+\url{https://www.wisdom.weizmann.ac.il/~naor/PAPERS/local_coloring.pdf}.
+See Theorem 2.1.
+
+\bibitem{NScolor}
+Xavier Coiteux-Roy, Francesco d'Amore, Rishikesh Gajjala,
+Fabian Kuhn, Fran\c{c}ois Le Gall, Henrik Lievonen,
+Augusto Modanese, Marc-Olivier Renou, Gustav Schmid,
+and Jukka Suomela.
+\emph{No distributed quantum advantage for approximate graph coloring}.
+STOC 2024.
+\url{https://arxiv.org/abs/2307.09444v3}.
+See Definitions 5.3--5.6 and Theorem 5.7.
+
+\bibitem{OnlineQuantum}
+Amirreza Akbari, Xavier Coiteux-Roy, Francesco d'Amore,
+Fran\c{c}ois Le Gall, Henrik Lievonen, Darya Melnyk,
+Augusto Modanese, Shreyas Pai, Marc-Olivier Renou,
+V\'aclav Rozho\v{n}, and Jukka Suomela.
+\emph{Online locality meets distributed quantum computing}.
+STOC 2025; corrected version, 13 February 2026.
+\url{https://arxiv.org/abs/2403.01903v4}.
+See Lemmas 6.4, 6.8, 6.11 and the proof of Lemma 6.14.
+
+\bibitem{QuantumBreak}
+Maxime Flin, Longcheng Li, and Jukka Suomela.
+\emph{Quantum advantage for distributed symmetry breaking}.
+Preprint, 22 September 2026.
+\url{https://arxiv.org/abs/2609.26788v1}.
+See Theorem 6.5.
+
+\end{thebibliography}
+\end{document}

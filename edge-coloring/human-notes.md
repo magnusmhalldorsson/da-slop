@@ -34,7 +34,7 @@ and the claim follows from $e < 3$.
 
 ## Random subsets are expanding
 
-***Claim 1:*** With probability at least 1/2, randomly-chosen sets $N(c)$ are expanding.
+***Claim 1:*** With probability at least $1/2$, randomly-chosen sets $N(c)$ are expanding.
 
 *Proof:* Fix $1 \le A \le d$. Suppose there is some bad collection $X \subseteq C$ of size $|X| = A$ such that the union of $N(c)$ over $c \in X$ fits inside some subset $Y \subseteq K$ of size $|Y| = 3rA$.
 
@@ -64,7 +64,7 @@ Now this was for a fixed size $A$, and then summing over all sizes of $A$ the pr
 
 ## Algorithm
 
-So from now on we will assume that we have indeed chosen expanding sets N(c). The complete algorithm is now:
+So from now on we will assume that we have indeed chosen expanding sets $N(c)$. The complete algorithm is now:
 
 - **Black node:** We see the old colors $c(e)$ of incident edges $e$. For each incident edge $e$, pick an $(r+1)$-element subset $S(e) \subseteq N(c(e))$, such that the sets $S(e)$ are pairwise non-intersecting.
 
@@ -110,4 +110,4 @@ Then things are hopefully less arbitrary and better-motivated. Both Hall argumen
 
 - You start with sets of size $2r+1$.
 - Since you have expansion $r+1$, you can choose subsets of size $r+1$ in the first Hall argument.
-- And then you have only $r$ weak edges, so expansion minus weak is still giving 1 in the second Hall argument.
+- And then you have only $r$ weak edges, so expansion minus weak is still giving $1$ in the second Hall argument.

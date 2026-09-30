@@ -10,7 +10,7 @@ Edge coloring with $O(\Delta)$ colors in graphs of maximum degree $\Delta$: poss
 
 Edge coloring with $O(\Delta)$ colors in 2-colored graphs of maximum degree $\Delta$: possible in $O(\log^* \Delta)$ rounds.
 
-The key idea is a ***color reduction technique*** that reduces $2^r \Delta$ colors to $O(r \Delta)$ colors in one round in 2-colored graphs. This leads to many new results on possible tradeoffs between the number of colors and the number of communication rounds, and it has also implications in list coloring.
+The key idea is a ***color reduction technique*** that reduces $2^r \Delta$ colors to $O(r \Delta)$ colors in one round in 2-colored graphs. This leads to many new results on possible tradeoffs between the number of colors and the number of communication rounds, and it also has implications in list coloring.
 
 ## Prior work
 

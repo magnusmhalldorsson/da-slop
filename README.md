@@ -4,6 +4,8 @@ This is a repository of ***AI-generated research results*** related to the field
 
 These are primarily results that are ***believed to be correct*** but ***have not yet been properly written up by humans for humans***.
 
+This repository is ***not*** a publication. You do ***not*** cite it. If you want to build on some of these results, please first write them up properly, and then we have a publication that we can cite. Results that have been written up properly and posted e.g. on arXiv can be then removed from this repository.
+
 ## Start here
 
 Jump to the **[master index](INDEX.md)** for the list of all results.

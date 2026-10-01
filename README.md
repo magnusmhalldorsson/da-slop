@@ -37,6 +37,10 @@ Formalizations do not need to be made available, as long as the human researcher
 
 Contributions here are licensed under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
+## Contributing
+
+See the [instructions for contributors](CONTRIBUTING.md).
+
 ## Contributors
 
 The primary authors are various LLMs and AI agents, but the following human beings have contributed to this repository:
